@@ -1,0 +1,7 @@
+base   mindmap
+author Jannes Drost-Tenfelde
+email  info@drost-tenfelde.de
+date   2011-10-11
+name   mindmap Plugin
+desc   This plugin allows you to make mindmaps of your website.
+url    http://www.drost-tenfelde.de/?id=dokuwiki:plugins:mindmap

@@ -1,0 +1,38 @@
+Dear {title} {firstname} {lastname},<br />
+<br />
+thank you for ordering {item_name} at {datetime}!<br />
+<br />
+Provided data:<br />
+<br />
+Title: {title}<br />
+First name: {firstname}<br />
+Last name: {lastname}<br />
+Street + nr: {street}<br />
+Postcode: {postcode}<br />
+Place: {place}<br />
+Country: {country}<br />
+Remarks: {remarks}<br />
+<br />
+Price information:<br />
+--------------------------------------------------<br />
+Ticket price: {price} {currency}<br />
+Number of tickets: {nr_tickets}<br />
+Porto: {porto} {currency}<br />
+--------------------------------------------------<br />
+Total price: {total_price} {currency}<br />
+--------------------------------------------------<br />
+<br />
+Please transfer {total_price} {currency} to the following bank account:<br />
+<br />
+{bank_account}<br />
+<br />
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!<br />
+Please do not forget to include the
+following transaction comment <br />
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!<br />
+Ticket Number: {ticket}<br />
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!<br /> 
+<br />
+Your order will be sent as soon as the transaction has been successfully completed.<br />
+<br />
+{signature}<br />

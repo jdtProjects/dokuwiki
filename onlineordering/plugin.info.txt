@@ -1,0 +1,7 @@
+base   onlineordering
+author Jannes Drost-Tenfelde
+email  info@drost-tenfelde.de
+date   2011-09-27
+name   Online Ordering Plugin
+desc   Creates online ordering forms
+url    http://www.drost-tenfelde.de/?id=dokuwiki:plugins:onlineordering

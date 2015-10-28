@@ -1,0 +1,7 @@
+base   autotweet
+author Jannes Drost-Tenfelde
+email  info@drost-tenfelde.de
+date   2011-10-05
+name   autotweet
+desc   Automatically posts tweets to your Twitter app when pages are changed.
+url    http://www.drost-tenfelde.de/?id=dokuwiki:plugins:autotweet
