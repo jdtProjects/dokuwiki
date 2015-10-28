@@ -48,8 +48,8 @@ function parse_vevent( $vevent, $dateFormat="%Y-%m-%d", $timeFormat="%H:%M" ) {
 	$regex_dtend_timezone = '/DTEND;TZID=(.*?):([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})/';
 	
 	// all day event
-	$regex_alldaystart = '/DTSTART;VALUE=DATE:([0-9]{4})([0-9]{2})([0-9]{2})/';
-	$regex_alldayend   = '/DTEND;VALUE=DATE:([0-9]{4})([0-9]{2})([0-9]{2})/';
+	$regex_alldaystart = '/DTSTART(?:;VALUE=DATE)?:([0-9]{4})([0-9]{2})([0-9]{2})/';
+	$regex_alldayend = '/DTEND(?:;VALUE=DATE)?:([0-9]{4})([0-9]{2})([0-9]{2})/'; 
     
     // Make the entry
     $entry = array();
