@@ -1,0 +1,38 @@
+div.facebookalbums {
+    margin-bottom: 20px;
+    float: left;
+}
+
+div.facebookalbums img {
+    padding: 0 !important;
+    margin: 2px !important;
+    border: 1px solid #000000 !important;
+}
+
+div.facebookalbum {
+    float: left;
+    text-align: center;
+    display: inline;
+    font-size: 12px;
+    margin-left: 5px;
+    margin-bottom: 20px;
+}
+
+div.facebookalbum a {
+    font-size: 10px;
+    text-decoration: none;
+}
+
+div.facebookalbum img, div.facebookpicture img {
+    height: 100px;
+    width: 130px;
+}
+
+div.facebookalbum_title {
+    float: none;
+    font-weight: bold;
+}
+
+div.facebookpicture {
+    padding: 10px;
+}

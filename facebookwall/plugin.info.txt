@@ -1,0 +1,7 @@
+base   facebookwall
+author Jannes Drost-Tenfelde
+email  info@drost-tenfelde.de
+date   2012-03-27
+name   facebookwall Plugin
+desc   Allows you to display facebook status messages in Dokuwiki
+url    http://www.drost-tenfelde.de/?id=dokuwiki:plugins:facebookwall
