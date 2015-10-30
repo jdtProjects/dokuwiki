@@ -22,5 +22,7 @@ $conf['article'] = '[[{url}|{{ wiki:facebook.png?nolink}}]]** {datetime} ** \\\\
 {more}
 ';
 
+$conf['maxWidth'] = 300;
+$conf['maxHeight'] = 0;
 
 ?>
