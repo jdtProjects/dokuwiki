@@ -18,12 +18,6 @@ if(!defined('DOKU_INC')) die();
 if(!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN',DOKU_INC.'lib/plugins/');
 require_once(DOKU_PLUGIN.'syntax.php');
 
-// Safeguard against multiple usage of the facebook class
-if (!class_exists('Facebook'))
-{ 
-    include_once(DOKU_INC.'lib/plugins/facebookwall/facebook.php');
-}
-
 // Syntax parameters
 define( "FB_WALL_APPLICATION_ID", "appid" ); // Facebook application id
 define( "FB_WALL_SECRET", "secret" ); // Facebook secret
@@ -39,6 +33,8 @@ define( "FB_WALL_LIMIT", "limit" ); // Limit size of the description by number o
 define( "FB_WALL_DATE_FORMAT", "dformat" ); // Date format
 define( "FB_WALL_TIME_FORMAT", "tformat" ); // Time format
 define( "FB_WALL_TEMPLATE", "template" ); // Template
+define( "FB_WALL_PICTURE_MAX_WIDTH", "maxWidth" ); // Maximum allowed width for attachment picture
+define( "FB_WALL_PICTURE_MAX_HEIGHT", "maxHeight" ); // Maximum allowed height for attachment picture
  
 /**
  * This plugin retrieves facebook status messages and displays them in HTML.
@@ -96,6 +92,20 @@ class syntax_plugin_facebookwall extends DokuWiki_Syntax_Plugin
         if ( !$params[FB_WALL_LIMIT] ) {
             $params[FB_WALL_LIMIT] = 0;        
         }
+        
+        // Max width
+        $maxWidth = $this->getConf( FB_WALL_PICTURE_MAX_WIDTH );
+        if ( !isset($maxWidth ) || $maxWidth == '' ) {
+            $maxWidth = 999;
+        }
+        $params[FB_WALL_PICTURE_MAX_WIDTH] = $maxWidth;
+        
+        // Max height
+        $maxHeight = $this->getConf( FB_WALL_PICTURE_MAX_HEIGHT );
+        if ( !isset($maxHeight) || $maxHeight== '' ) {
+            $maxHeight = 0;
+        }
+        $params[FB_WALL_PICTURE_MAX_HEIGHT] = $maxHeight;
         
         // Get the appropriate display template
         $template = $this->getConf( $params[FB_WALL_SHOW_AS] );
@@ -163,9 +173,13 @@ class syntax_plugin_facebookwall extends DokuWiki_Syntax_Plugin
             
             // Make a query to get the events for a fanpageid
             
-            $fql = 'SELECT post_id, message, created_time, attachment from stream where source_id = '.$data['fanpageid'];
+            $fql = 'SELECT post_id, message, created_time, attachment, actor_id from stream WHERE source_id = '.$data['fanpageid'];
+            $fql .= ' AND actor_id = source_id ';
             $fql .= ' ORDER BY created_time '.$data[FB_WALL_SORT];
-           			     
+
+            if (!class_exists('Facebook')) { 
+              include_once('facebook.php');
+            }           			     
             // Initialise Facebook
             $facebook = new Facebook( array(
                 'appId'  => $data['appid'],
@@ -216,14 +230,20 @@ class syntax_plugin_facebookwall extends DokuWiki_Syntax_Plugin
                 }
 
                 // Limit?
-                if ( isset( $data[FB_WALL_LIMIT]) && ($data[FB_WALL_LIMIT] > 0 ) ) {  
-                    if ( strlen( $values['message'] ) > $data[FB_WALL_LIMIT] ) {    
-                        $values['message'] = substr( $values['message'], 0, $data[FB_WALL_LIMIT] ).'...';
+                if ( isset( $data[FB_WALL_LIMIT]) && ($data[FB_WALL_LIMIT] > 0 ) ) { 
+                    if ( strlen( $values['message'] ) > $data[FB_WALL_LIMIT] ) {                   
+                        $values['message_short'] = substr( $values['message'], 0, $data[FB_WALL_LIMIT] ).'...';
+                        // Find the first occurance of a space
+                        $index = strrpos ( $values['message_short'], ' ' );
+                       
+                        $values['message'] = substr( $values['message_short'], 0, $index ).'...';
                     }
                 }                 
                 // Process the message                               
                 $values['message'] = str_replace("\r\n", '<html><br /></html>', $values['message'] );
                 $values['message'] = str_replace("\n", '<html><br /></html>', $values['message'] );
+				$values['message_short'] = str_replace("\r\n", '<html><br /></html>', $values['message_short'] );
+                $values['message_short'] = str_replace("\n", '<html><br /></html>', $values['message_short'] );
                 
                 $entry = str_replace('{message}', $values['message'], $entry );
                               
@@ -231,6 +251,7 @@ class syntax_plugin_facebookwall extends DokuWiki_Syntax_Plugin
                 $entry = str_replace('{date}', strftime( $date_format, $values['created_time']), $entry );
                 $entry = str_replace('{time}', strftime( $time_format, $values['created_time']), $entry );
                 $entry = str_replace('{datetime}', strftime( $datetime_format, $values['created_time']), $entry );
+                $entry = str_replace('{timestamp}', $values['created_time'], $entry );
                 
                 // Url
                 $post_id = $values['post_id'];
@@ -245,7 +266,6 @@ class syntax_plugin_facebookwall extends DokuWiki_Syntax_Plugin
                 $attachment = $values['attachment'];
                                 
                 if ( is_array( $attachment ) ) {
-                    // $content .= print_r( $attachment, true );
                     // Get the attachment information
                     $attachment_media = $attachment['media'][0];
                     $attachment_type = $attachment_media['type'];
@@ -256,15 +276,22 @@ class syntax_plugin_facebookwall extends DokuWiki_Syntax_Plugin
                     $href = $attachment_media['href'];
                     $alt = $attachment_media['alt'];
                     $src = $attachment_media['src'];
+                    
+                    if ( isset($src) && ($src != '' ) ) {
+                        // IF the url is wrapped, unwrap it
+                        $url_position = strpos($src, "url=");                      
+                        if ( $url_position !== false ) {
+                            $src = urldecode( substr( $src, $url_position + 4 ) );
+                        }
+                    }
                                           
                     // Process links                  
                     if ( $attachment_type == 'link') {
                         
                         // Add the picture
                         if ( isset($src) && ($src != '' )) {
-                            $attachment_content .= '<html><a href="'.$href.'" alt="'.$alt.'" target="'.$conf['target']['extern'].'">';
-                            $attachment_content .= '<img src="'.$src.'" align="left"/>';
-                            $attachment_content .= '</a></html>';
+							$attachment_image = $this->makeImage( $href, $alt, $src, $data, $conf);
+                            $attachment_content .= $attachment_image;
                         }
                         // Add the link
                         $attachment_content .= '[['.$href.' | '.$attachment_name.']]'."<html><br /></html>";
@@ -278,8 +305,20 @@ class syntax_plugin_facebookwall extends DokuWiki_Syntax_Plugin
                         }
                     }
                     // Process photos
-                    else if ( $attachment_type == 'photo') {                   
-                        $attachment_content .= '[['.$href.'|{{'.$src.'}}]]';                       
+                    else if ( $attachment_type == 'photo') {
+                        // Get the photo's section
+                        $photo = $attachment_media['photo'];
+                        try {
+                            $images = $photo['images'];
+                            $src = $images[count($images)-1]['src'];
+                        } catch (Exception $e) {
+                        
+                            $src = $attachment_media['src']; 
+                        }
+                         
+                        // Display the photo
+						$attachment_image = $this->makeImage( $href, $alt, $src, $data, $conf);
+                        $attachment_content .= $attachment_image;
                     }
                     // Process videos
                     else if ( $attachment_type == 'video') {
@@ -287,9 +326,7 @@ class syntax_plugin_facebookwall extends DokuWiki_Syntax_Plugin
                         
                         // Add linked picture
                         if ( isset($src) && ($src != '' )) {
-                            $attachment_content .= '<html><a href="'.$href.'" alt="'.$alt.'" target="'.$conf['target']['extern'].'">';
-                            $attachment_content .= '<img src="'.$src.'" align="left"/>';
-                            $attachment_content .= '</a></html>';                           
+                            $attachment_content .= $this->makeImage( $href, $alt, $src, $data, $conf);                           
                         }
                         // Add the link
                         $attachment_content .= '[['.$href.' | '.$attachment_name.']]'."<html><br /></html>";
@@ -303,7 +340,14 @@ class syntax_plugin_facebookwall extends DokuWiki_Syntax_Plugin
                             $attachment_content .= '<html><br /></html>';
                         }
                     }
-                    $attachment_content .= '<html><br /><br /></html>';                    
+                    $attachment_content .= '<html><br /><br /></html>';
+					if ( isset( $attachment_image) ) {
+						$entry = str_replace( '{attachment_image}', $attachment_image, $entry);
+						unset( $attachment_image );
+					}
+					else {
+						$entry = str_replace( '{attachment_image}', '', $entry);
+					}
                 }
                 // Replace the attachment tag with the attachment
                 $entry = str_replace('{attachment}', $attachment_content, $entry );
@@ -340,6 +384,36 @@ class syntax_plugin_facebookwall extends DokuWiki_Syntax_Plugin
         $remote_dt = new DateTime("now", $remote_dtz);
         $offset = $origin_dtz->getOffset($origin_dt) - $remote_dtz->getOffset($remote_dt);
         return $offset;
+    }
+    
+    /**
+     * Makes a linked image.
+     * 
+     * @href link
+     * @alt tooltip
+     * @src location of the image
+     * @data configuration parameters for the plugin.
+     * @conf DokuWiki configuration.
+     * 
+     * @return HTML code with linked image.
+     */                                                 
+    function makeImage( $href, $alt, $src, $data, $conf) {
+        $html = '<html><a href="'.$href.'" alt="'.$alt.'" target="'.$conf['target']['extern'].'">';
+        $html .= '<img src="'.$src.'" align="left"';
+        
+        if ( $data[FB_WALL_PICTURE_MAX_WIDTH] > 0 || $data[FB_WALL_PICTURE_MAX_HEIGHT] > 0) {
+            $html .= ' style="';
+            if ( $data[FB_WALL_PICTURE_MAX_WIDTH] > 0 ) {
+                $html .= 'max-width: '.$data[FB_WALL_PICTURE_MAX_WIDTH].'px !important;';
+            }
+            if ( $data[FB_WALL_PICTURE_MAX_HEIGHT] > 0 ) {
+                $html .= 'max-height: '.$data[FB_WALL_PICTURE_MAX_HEIGHT].'px !important;';
+            }
+            $html .= '"';
+        }
+        $html .= '/>';
+        $html .= '</a></html>';
+        return $html;
     }
 }
 
