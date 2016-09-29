@@ -4,19 +4,24 @@
 
 # Date format that is used to display the from and to values
 # If you leave this empty '', then the default dformat from /conf/dokuwiki.php will be used.
-$conf['dformat'] = '%d %B %Y';
-$conf['tformat'] = '%H:%M';
+$conf['dformat'] = 'd F Y';
+$conf['tformat'] = 'h:ia';
 
 // showAs=default
 $conf['default'] = '
-===== {title} =====
-| [[{image_large}|{{{image_square}?nolink}}]] | ** {datetime} **\\\\ {location}\\\\ \\\\ {description}\\\\ \\\\ {more}  |';
+{datetime} **{title}**\\\\
+{description}\\\\
+{location}\\\\
+{more}';
 
-$conf['table'] = '
-^ [[{image_large}|{{  {image_square}?nolink}}]] | {title}  | ** {datetime} **  | {location}  | {description} \\\\ {more}  |';
+$conf['table'] = $conf['default'];
+$conf['short'] = $conf['default'];
+
+/*'
+^ [[{image_large}|{{  {image}?100&nolink}}]] | {title}  | ** {datetime} **  | {location}  | {description} \\\\ {more}  |';
 
 $conf['short'] = '
-^ [[{image_large}|{{  {image_square}?nolink}}]] | {title}  | ** {datetime} **  | {location}  | {description} \\\\ {more}  |';
-
+^ [[{image_large}|{{  {image}?100&nolink}}]] | {title}  | ** {datetime} **  | {location}  | {description} \\\\ {more}  |';
+*/
 
 ?>

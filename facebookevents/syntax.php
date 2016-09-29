@@ -4,11 +4,11 @@
  * Plugin facebookevents: Displays facebook events.
  * 
  * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
- * @version    1.1
- * @date       March 2012
+ * @version    1.2
+ * @date       September 2016
  * @author     J. Drost-Tenfelde <info@drost-tenfelde.de>
  *
- * This plugin uses the Facebook SDK.
+ * This plugin uses Facebook's Graph API v2.7.
  *
  */
 
@@ -35,7 +35,7 @@ define( "FB_EVENTS_TIME_FORMAT", "tformat" );
 define( "FB_EVENTS_TEMPLATE", "template" );
 
 /**
- * This plugin retrieves facebook evetns and displays them in HTML.
+ * This plugin retrieves facebook events and displays them in HTML.
  *
  * Usage: {{facebookevents#appid=1234&secret=12345&fanpageid=12345&showAs=default}}
  * 
@@ -46,10 +46,10 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
       return array(
         'author' => 'J. Drost-Tenfelde',
         'email'  => 'info@drost-tenfelde.de',
-        'date'   => '2012-02-09',
+        'date'   => '20162-09-29',
         'name'   => 'facebookevents',
-        'desc'   => 'Displays facebook events',
-        'url'    => 'http://www.drost-tenfelde.de/?id=dokuwiki:plugins:facebookevents',
+        'desc'   => 'Displays facebook events as HTML',
+        'url'    => 'https://www.dokuwiki.org/plugin:facebookevents',
       );
     }
  
@@ -148,155 +148,152 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
                 $renderer->doc .= 'Error in Plugin '.$info['name'].': '.$this->error;
                 return;
             }
-            
-            if (!class_exists('Facebook')) { 
-              include_once('facebook.php');
-            }
-           
-            // Make a query to get the events for a fanpageid
-            $fql = "SELECT eid, name, pic, pic_small, pic_big, pic_square, start_time, end_time, location, description, is_date_only ". 
-              " FROM event WHERE eid IN ( SELECT eid FROM event_member WHERE uid = ".$data['fanpageid']." ) ". 
-              " ORDER BY start_time ".$data[FB_EVENTS_SORT];
-           			     
-            // Initialise Facebook
-            $facebook = new Facebook( array(
-                'appId'  => $data['appid'],
-                'secret' => $data['secret'],
-                'cookie' => true, // enable optional cookie support
-            ) );
-                       
-            // Set the parameters
-            $param = array(
-                'method'    => 'fql.query',
-                'query'     => $fql,
-                'callback'  => ''
-            );
-            
-            // Get the date format
+			
+			// Get the date format
             $date_format = $this->getConf(FB_EVENTS_DATE_FORMAT);
             $time_format = $this->getConf(FB_EVENTS_TIME_FORMAT);
-
-            // Remember the "old" timezone"
-            //$origin_timezone = date_default_timezone_get();
-            
-            // Set it to Facebook timezone
-            date_default_timezone_set('Europe/Berlin');
-
-            // Execute the query
-            $fql_results = $facebook->api($param);
-            
-            $displayed_entries = 0;
-            // Loop through the results  
-            foreach( $fql_results as $keys => $values ) {
-                $entry = $data['template'];
-				
-				// Convert the date time to old
-				$values['start_time'] = strtotime($values['start_time']);
-				if ( isset( $values['end_time']) ) {
-					$values['end_time'] = strtotime($values['end_time']);
-				}
-				else {
-					$values['end_time'] = $values['start_time'];
-				}
-				
-                if ( !$values['description'] ) {
-                    $values['description'] = $this->getLang('no_description');
-                }
-                
-                if  ( !($values['end_time' ])) {
-                    $values['end_time'] = $values['start_time'];
-                }
-                          
-                // Is the start date lower than the current date?
-                if ($data[FB_EVENTS_FROM_DATE]  && ($values['start_time'] < $data[FB_EVENTS_FROM_DATE] ) )  {
-                    // Make sure the end-date lies after the current date
-                    if ( (!isset($data[FB_EVENTS_TO_DATE])) || $values['end_time'] < $data[FB_EVENTS_TO_DATE] )  {
-                      continue;
-                    }
-                }
-                // If the date is higher than the to data, skip to the next
-                if ( $data[FB_EVENTS_TO_DATE] && ($values['end_time'] < $data[FB_EVENTS_TO_DATE] ))  {
-                    continue;
-                }
-                               
-                // Limit?
-                if ( isset( $data[FB_EVENTS_LIMIT]) && ($data[FB_EVENTS_LIMIT] > 0 ) ) {  
-                    if ( strlen( $values['description'] ) > $data[FB_EVENTS_LIMIT] ) {    
-                        $values['description'] = substr( $values['description'], 0, $data[FB_EVENTS_LIMIT] );
-                        
-                        // Find the first occurance of a space
-                        $index = strrpos ( $values['description'], ' ' );
-                       
-                        $values['description'] = substr( $values['description'], 0, $index ).'...';
-                    }
-                }
-                      
-                // Process the description
-                $values['description'] = str_replace("\r\n", '<html><br /></html>', $values['description'] );
-                $values['description'] = str_replace("\n", '<html><br /></html>', $values['description'] );
-
-                // Prepare the entry                
-                $entry = str_replace('{title}', $values['name'], $entry );
-                $entry = str_replace('{description}', $values['description'], $entry );
-                $entry = str_replace('{location}', $values['location'], $entry );
-                $entry = str_replace('{image}', $values['pic'], $entry);
-                $entry = str_replace('{image_large}', $values['pic_big'], $entry);
-                $entry = str_replace('{image_small}', $values['pic_small'], $entry);
-                $entry = str_replace('{image_square}', $values['pic_square'], $entry);
-
-                // Dates
-                if ( (!isset( $data[FB_EVENTS_SHOW_END_TIMES])) || $data[FB_EVENTS_SHOW_END_TIMES] == '1' ) {
-                    // Are they the same date?
-                    $start_date = date( "Ymd", $values['start_time']);
-                    $end_date = date( "Ymd", $values['end_time']);
+			
+			// Get the facebook information
+			$fb_app_id = $data[FB_EVENTS_APPLICATION_ID];
+			$fb_secret = $data[FB_EVENTS_SECRET];
+			$fb_page_id = $data[FB_EVENTS_FAN_PAGE_ID];
+			
+			// Get the access token using app-id and secret
+			$token_url ="https://graph.facebook.com/oauth/access_token?client_id={$fb_app_id}&client_secret={$fb_secret}&grant_type=client_credentials";		
+			$token_data = file_get_contents($token_url);
+			if ( !isset($token_data ) ) {
+				$renderer->doc .= 'Access token could not be retrieved for Plugin '.$info['name'].': '.$this->error;
+                return;
+			}
+			$fb_access_token = split("=", $token_data )[1];
 					
-                    if ( $start_date == $end_date ) {
-                        $date_string = strftime( $date_format, $values['start_time']);
+			// Get the events
+			$since_date = $data[FB_EVENTS_FROM_DATE];
+			$until_date = $data[FB_EVENTS_TO_DATE];
+			
+			$fb_fields="id,name,description,place,timezone,start_time,end_time,cover";
+			$json_link = "https://graph.facebook.com/v2.7/{$fb_page_id}/events/attending/?fields={$fb_fields}&access_token={$fb_access_token}&since={$since_date}&until={$until_date}";
+			
+ 			$json = file_get_contents($json_link);
+			$objects = json_decode($json, true, 512, JSON_BIGINT_AS_STRING);
+			
+			// count the number of events
+			$event_count = count($objects['data']);
+			$displayed_entries = 0;
+			// Loop through the events
+			for ($index = 0; $index < $event_count; $index++){			
+				$event = $objects['data'][$index];
+				
+				date_default_timezone_set($event['timezone']);
+				
+				$start_date = date( $date_format, strtotime($event['start_time']));			
+				$start_time = date( $time_format, strtotime($event['start_time']));
+				
+				if ( !isset($event['end_time'])) {
+					$event['end_time'] = $event['start_time'];
+				}			
+				$end_date = date( $date_format, strtotime($event['end_time']));
+				$end_time = date( $time_format, strtotime($event['end_time']));
+				
+				$eid = $event['id'];
+				$name = $event['name'];
+				
+				$description = isset($event['description']) ? $event['description'] : "";
+				// Limit?
+				if ( isset( $data[FB_EVENTS_LIMIT]) && ($data[FB_EVENTS_LIMIT] > 0 ) ) {  
+					if ( strlen( $description ) > $data[FB_EVENTS_LIMIT] ) {    
+						$description = substr( $description, 0, $data[FB_EVENTS_LIMIT] );
+						// Find the first occurance of a space
+						$index = strrpos ( $description, ' ' );
+						$description = substr( $description, 0, $index ).'...';
+					}
+				}
+				$description = str_replace("\r\n", '<html><br /></html>', $description );
+				$description = str_replace("\n", '<html><br /></html>', $description );
+
+				
+				$pic = isset($event['cover']['source']) ? $event['cover']['source'] : "https://graph.facebook.com/v2.7/{$fb_page_id}/picture";
+				$pic_large = isset($event['cover']['source']) ? $event['cover']['source'] : "https://graph.facebook.com/v2.7/{$fb_page_id}/picture?type=large";
+				$pic_small = isset($event['cover']['source']) ? $event['cover']['source'] : "https://graph.facebook.com/v2.7/{$fb_page_id}/picture?type=small";
+
+				// place
+				$place_name = isset($event['place']['name']) ? $event['place']['name'] : "";
+				$street = isset($event['place']['location']['street']) ? $event['place']['location']['street'] : "";
+				$city = isset($event['place']['location']['city']) ? $event['place']['location']['city'] : "";
+				$country = isset($event['place']['location']['country']) ? $event['place']['location']['country'] : "";
+				$zip = isset($event['place']['location']['zip']) ? $event['place']['location']['zip'] : "";
+ 
+				$location="";
+ 
+				if ( $place_name && $street & $city && $country && $zip){
+					$location = "{$place_name}, {$street}, {$zip} {$city}, {$country}";
+				}
+				else{
+					$location = "Location not set or event data is too old.";
+				}
+				
+				// Build the entry
+				$entry = $data['template'];
+				
+				// Replace the values
+				$entry = str_replace('{title}', $name, $entry );
+				$entry = str_replace('{description}', $description, $entry );
+				$entry = str_replace('{location}', $location, $entry );
+				$entry = str_replace('{place}', $place_name, $entry );
+				$entry = str_replace('{city}', $city, $entry );
+				$entry = str_replace('{country}', $country, $entry );
+				$entry = str_replace('{zip}', $zip, $entry );
+				$entry = str_replace('{image}', $pic, $entry);
+				$entry = str_replace('{image_large}', $pic_large, $entry);
+				$entry = str_replace('{image_small}', $pic_small, $entry);
+				$entry = str_replace('{image_square}', $pic, $entry); // Backward compatibility
+				
+				// DateTime
+				if ( (!isset( $data[FB_EVENTS_SHOW_END_TIMES])) || $data[FB_EVENTS_SHOW_END_TIMES] == '1' ) {
+
+					// Are they the same date?
+					$compare_start_date = date( "Ymd", strtotime($event['start_time']));
+					$compare_end_date = date( "Ymd", strtotime($event['end_time']));
+					
+					if ( $compare_start_date == $compare_end_date ) {
+						$datetime_string = $start_date;
+						/*if ( isset($event['is_date_only'] && (!$event['is_date_only'])) {
+							$datetime_string = $datetime_string.' '.strftime( $time_format, $event['start_time']).'-'.strftime( $time_format, $event['end_time']);
+						}*/
+						$entry = str_replace('{date}', $date_string, $entry );
+						$entry = str_replace('{datetime}', $datetime_string, $entry );
+					}
+					else {
+						$date_string = $start_date.' - '.$end_date;
 						$datetime_string = $date_string;
-						if ( !$values['is_date_only']) {
-							$datetime_string = $datetime_string.' '.strftime( $time_format, $values['start_time']).'-'.strftime( $time_format, $values['end_time']);
-						}
-                        $entry = str_replace('{date}', $date_string, $entry );
-                        $entry = str_replace('{datetime}', $datetime_string, $entry );    
-                    }
-                    else {
-                        $date_string = strftime( $date_format, $values['start_time']).' - '.strftime( $date_format, $values['end_time']);
-						$datetime_string = $date_string;
-						if ( !$values['is_date_only']) {
-							$datetime_string =  strftime( $date_format, $values['start_time']).' '.strftime( $time_format, $values['start_time']).' - '.
-												strftime( $date_format, $values['end_time']).' '.strftime( $time_format, $values['end_time']);                        
-						}
-                        $entry = str_replace('{date}', $date_string, $entry );
-                        $entry = str_replace('{datetime}', $datetime_string, $entry );                    
-                    }
-                }
-                else {                                                
-                    $entry = str_replace('{date}', strftime( $date_format, $values['start_time']), $entry );
-                    $entry = str_replace('{datetime}', strftime( $date_format, $values['start_time']).' '.strftime( $time_format, $values['start_time']) , $entry );
-                }
-                $entry = str_replace('{timestamp}', $values['start_time'], $entry);
-                $entry = str_replace('{startdate}', strftime( $date_format, $values['start_time']), $entry);
-                $entry = str_replace('{starttime}', strftime( $time_format, $values['start_time']), $entry);
-                $entry = str_replace('{startdatetime}', strftime( $date_format, $values['start_time']).' '.strftime( $time_format, $values['start_time']), $entry);
-                $entry = str_replace('{enddate}', strftime( $date_format, $values['end_time']), $entry);
-                $entry = str_replace('{endtime}', strftime( $time_format, $values['end_time']), $entry);
-                $entry = str_replace('{enddatetime}', strftime( $date_format, $values['end_time']).' '.strftime( $time_format, $values['end_time']), $entry);
-                
-                // [[ url | read more ]
-                $event_url = "http://www.facebook.com/events/".$values['eid'];
+						/*if ( isset($event['is_date_only'] && (!$event['is_date_only'])) {
+							$datetime_string =  strftime( $date_format, $event['start_time']).' '.strftime( $time_format, $event['start_time']).' - '.
+												strftime( $date_format, $event['end_time']).' '.strftime( $time_format, $event['end_time']);                        
+						}*/
+						$entry = str_replace('{date}', $date_string, $entry );
+						$entry = str_replace('{datetime}', $datetime_string, $entry );                    
+					}
+				}
+				else {                                                
+					$entry = str_replace('{date}', $start_date, $entry );
+					$entry = str_replace('{datetime}', date( $date_format, strtotime($event['start_time'])).' '.date( $time_format, strtotime($event['start_time'])) , $entry );
+				}
+
+				
+				// [[ url | read more ]
+                $event_url = "http://www.facebook.com/events/".$eid;
                 $entry = str_replace('{url}', $event_url, $entry );
                 $entry = str_replace('{more}', '[['.$event_url.'|'.$this->getLang('read_more').']]', $entry );
-                
-                
-                // Add the entry to the content                                
-                $content .= $entry;
+				
+				// Add the entry to the content                                
+				$content .= $entry;
 
-                // Only display a maximum number of entries
-                $displayed_entries++;
-                if ( isset( $data[FB_EVENTS_NR_ENTRIES] ) && $displayed_entries >= $data[FB_EVENTS_NR_ENTRIES] ) {
-                    break;
-                }                                
-            }
+				// Only display a maximum number of entries (if set)
+				$displayed_entries++;
+				if ( isset( $data[FB_EVENTS_NR_ENTRIES] ) && $displayed_entries >= $data[FB_EVENTS_NR_ENTRIES] ) {
+					break;
+				}
+			}
 		
 			//$renderer->doc .= $ret;
 			$html = p_render($mode, p_get_instructions( $content ), $info );
