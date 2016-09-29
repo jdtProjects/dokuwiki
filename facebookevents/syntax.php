@@ -274,26 +274,26 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 					
 					if ( $compare_start_date == $compare_end_date ) {
 						$datetime_string = $start_date;
-						/*if ( isset($event['is_date_only'] && (!$event['is_date_only'])) {
-							$datetime_string = $datetime_string.' '.strftime( $time_format, $event['start_time']).'-'.strftime( $time_format, $event['end_time']);
-						}*/
+						//if ( isset($event['is_date_only']) && (!$event['is_date_only'])) {
+							$datetime_string = $datetime_string.' '.$start_time.' - '.$end_time;
+							
+						//}
 						$entry = str_replace('{date}', $date_string, $entry );
 						$entry = str_replace('{datetime}', $datetime_string, $entry );
-					}
+											}
 					else {
 						$date_string = $start_date.' - '.$end_date;
 						$datetime_string = $date_string;
-						/*if ( isset($event['is_date_only'] && (!$event['is_date_only'])) {
-							$datetime_string =  strftime( $date_format, $event['start_time']).' '.strftime( $time_format, $event['start_time']).' - '.
-												strftime( $date_format, $event['end_time']).' '.strftime( $time_format, $event['end_time']);                        
-						}*/
+						//if ( isset($event['is_date_only']) && (!$event['is_date_only'])) {
+							$datetime_string =  $start_date.' '.$start_time.' - '.$end_date.' '.$end_time;
+						//}
 						$entry = str_replace('{date}', $date_string, $entry );
 						$entry = str_replace('{datetime}', $datetime_string, $entry );                    
 					}
 				}
 				else {                                                
 					$entry = str_replace('{date}', $start_date, $entry );
-					$entry = str_replace('{datetime}', date( $date_format, strtotime($event['start_time'])).' '.date( $time_format, strtotime($event['start_time'])) , $entry );
+					$entry = str_replace('{datetime}', $start_date.' '.$start_time);
 				}
 
 				
