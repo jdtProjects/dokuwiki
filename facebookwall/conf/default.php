@@ -1,10 +1,7 @@
 <?php
 
-// Date format
-$conf['dformat'] = '%d %B %Y';
-
-// Time format
-$conf['tformat'] = '%H:%M';
+$conf['dformat'] = 'd F Y';
+$conf['tformat'] = 'h:ia';
 
 // showAs=default
 $conf['default'] = '===== {datetime} =====

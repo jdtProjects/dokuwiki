@@ -6,8 +6,6 @@ $meta['tformat'] = array('string');
 $meta['default'] = array('');
 $meta['table'] = array('');
 $meta['short'] = array('');
-$meta['article'] = array('');
-$meta['articlede'] = array('');
 
 $meta['maxWidth'] = array('number');
 $meta['maxHeight'] = array('number');

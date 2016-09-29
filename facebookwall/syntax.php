@@ -5,10 +5,10 @@
  * 
  * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
  * @version    1.2
- * @date       March 2012
+ * @date       September 2016
  * @author     J. Drost-Tenfelde <info@drost-tenfelde.de>
  *
- * This plugin uses the Facebook SDK.
+ * This plugin uses Facebook Graph API v2.7.
  *
  */
 
@@ -67,6 +67,18 @@ class syntax_plugin_facebookwall extends DokuWiki_Syntax_Plugin
     function connectTo($mode) {
         $this->Lexer->addSpecialPattern('\{\{facebookwall.*?\}\}',$mode,'plugin_facebookwall');
     }
+
+	function getData($url) {
+		$ch = curl_init();
+		$timeout = 5;
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		$data = curl_exec($ch);
+		curl_close($ch);
+		return $data;
+	}
     
 	/**
 	 * parse parameters from the {{facebookwall#...}} tag.
@@ -171,196 +183,118 @@ class syntax_plugin_facebookwall extends DokuWiki_Syntax_Plugin
                 return;
             }
             
-            // Make a query to get the events for a fanpageid
-            
-            $fql = 'SELECT post_id, message, created_time, attachment, actor_id from stream WHERE source_id = '.$data['fanpageid'];
-            $fql .= ' AND actor_id = source_id ';
-            $fql .= ' ORDER BY created_time '.$data[FB_WALL_SORT];
-
-            if (!class_exists('Facebook')) { 
-              include_once('facebook.php');
-            }           			     
-            // Initialise Facebook
-            $facebook = new Facebook( array(
-                'appId'  => $data['appid'],
-                'secret' => $data['secret'],
-                'cookie' => true, // enable optional cookie support
-            ) );
-                       
-            // Set the parameters
-            $param = array(
-                'method'    => 'fql.query',
-                'query'     => $fql,
-                'callback'  => ''
-            );
-            
+			// Get the facebook information
+			$fb_app_id = $data[FB_WALL_APPLICATION_ID];
+			$fb_secret = $data[FB_WALL_SECRET];
+			$fb_page_id = $data[FB_WALL_FAN_PAGE_ID];
+			
+			// Get the access token using app-id and secret
+			$token_url ="https://graph.facebook.com/oauth/access_token?client_id={$fb_app_id}&client_secret={$fb_secret}&grant_type=client_credentials";
+			$token_data = $this->getData( $token_url );
+			
+			$elements = split("=", $token_data );
+			if ( count($elements) < 2) {
+				$renderer->doc .= 'Access token could not be retrieved for Plugin '.$info['name'].': '.$this->error;
+				return;
+			}
+			$fb_access_token = $elements[1];
+			
             // Get the date format
             $date_format = $this->getConf(FB_WALL_DATE_FORMAT);
             $time_format = $this->getConf(FB_WALL_TIME_FORMAT);
             $datetime_format = $date_format.' '.$time_format;
 
+			$numberOfEntries = $data[FB_WALL_NR_ENTRIES];
+			
             // Get the time offset
             //$offset = $this->get_timezone_offset( "America/Los_Angeles" );
             $offset = 0;
-            
-            // Execute the query
-            $fql_results = $facebook->api($param);
-            
-            $displayed_entries = 0;           
-                       
-            // Loop through the results  
-            foreach( $fql_results as $keys => $values ) {
+
+			$fields = "id,message,picture,link,name,description,type,icon,created_time,from,object_id";
+			
+			$limit = $numberOfEntries + 5;
+			$json_link = "https://graph.facebook.com/{$fb_page_id}/feed?access_token={$fb_access_token}&fields={$fields}&limit={$limit}";
+			$json = $this->getData( $json_link);
+
+			//$objects = json_decode($json, true, 512, JSON_BIGINT_AS_STRING);
+			$objects = json_decode($json, true);
+			
+			// count the number of wallposts
+			$post_count = count($objects['data']);
+
+			// Loop through the events
+			for ($post_index = 0; $post_index < $post_count; $post_index++) {
+				$post = $objects['data'][$post_index];
+				
                 $entry = $data[FB_WALL_TEMPLATE];
                 
-                // Process the date
-                $values['created_time'] = $values['created_time'] - $offset;
-                
                 // If no message was provided, skip to the next
-                if ( !$values['message'] ) {
+                if ( !$post['message'] ) {
                     continue;
                 }
                 
                 // If the date is lower than the from date, skip to the next
-                if ( isset($data[FB_WALL_FROM_DATE]) && ($values['created_time'] < $data[FB_WALL_FROM_DATE] ) )  {
+                if ( isset($data[FB_WALL_FROM_DATE]) && ($post['created_time'] < $data[FB_WALL_FROM_DATE] ) )  {
                     continue;
                 }
                 // If the date is higher than the to data, skip to the next
-                if ( $data[FB_WALL_TO_DATE] && ($values['created_time'] > $data[FB_WALL_TO_DATE] ))  {
+                if ( $data[FB_WALL_TO_DATE] && ($post['created_time'] > $data[FB_WALL_TO_DATE] ))  {
                     continue;
                 }
 
                 // Limit?
                 if ( isset( $data[FB_WALL_LIMIT]) && ($data[FB_WALL_LIMIT] > 0 ) ) { 
-                    if ( strlen( $values['message'] ) > $data[FB_WALL_LIMIT] ) {                   
-                        $values['message_short'] = substr( $values['message'], 0, $data[FB_WALL_LIMIT] ).'...';
+                    if ( strlen( $post['message'] ) > $data[FB_WALL_LIMIT] ) {                   
+                        $post['message_short'] = substr( $post['message'], 0, $data[FB_WALL_LIMIT] ).'...';
                         // Find the first occurance of a space
-                        $index = strrpos ( $values['message_short'], ' ' );
-                       
-                        $values['message'] = substr( $values['message_short'], 0, $index ).'...';
+                        $index = strrpos ( $post['message_short'], ' ' );
+						$post['message_short'] = substr( $post['message_short'], 0, $index ).'...';
+                        $post['message'] = substr( $post['message_short'], 0, $index ).'...';
                     }
-                }                 
+                }
+				else {
+					$post['message_short'] = substr( $post['message'], 0, 150 ).'...';
+					$index = strrpos ( $post['message_short'], ' ' );
+                    $post['message_short'] = substr( $post['message_short'], 0, $index ).'...';
+				}
                 // Process the message                               
-                $values['message'] = str_replace("\r\n", '<html><br /></html>', $values['message'] );
-                $values['message'] = str_replace("\n", '<html><br /></html>', $values['message'] );
-				$values['message_short'] = str_replace("\r\n", '<html><br /></html>', $values['message_short'] );
-                $values['message_short'] = str_replace("\n", '<html><br /></html>', $values['message_short'] );
+                $post['message'] = str_replace("\r\n", '<html><br /></html>', $post['message'] );
+                $post['message'] = str_replace("\n", '<html><br /></html>', $post['message'] );
+				$post['message_short'] = str_replace("\r\n", '<html><br /></html>', $post['message_short'] );
+                $post['message_short'] = str_replace("\n", '<html><br /></html>', $post['message_short'] );
                 
-                $entry = str_replace('{message}', $values['message'], $entry );
+                $entry = str_replace('{message}', $post['message'], $entry );
+				$entry = str_replace('{message_short}', $post['message_short'], $entry );
                               
                 // Replace tags in template
-                $entry = str_replace('{date}', strftime( $date_format, $values['created_time']), $entry );
-                $entry = str_replace('{time}', strftime( $time_format, $values['created_time']), $entry );
-                $entry = str_replace('{datetime}', strftime( $datetime_format, $values['created_time']), $entry );
-                $entry = str_replace('{timestamp}', $values['created_time'], $entry );
+                $entry = str_replace('{date}', date( $date_format, strtotime($post['created_time'])), $entry );
+                $entry = str_replace('{time}', date( $time_format, strtotime($post['created_time'])), $entry );
+                $entry = str_replace('{datetime}', date( $datetime_format, strtotime($post['created_time'])), $entry );
+                $entry = str_replace('{timestamp}', $post['created_time'], $entry );
                 
+				$pic = $post['picture'];
+				// Add a fix for urls with get parameters
+				if ( strpos($pic, '?') > 0 )
+				{
+					$pic .= '&.png';
+				}
+				$entry = str_replace('{image}', $pic, $entry );
+				
                 // Url
-                $post_id = $values['post_id'];
+                $post_id = $post['id'];
                 $post_values = explode( "_", $post_id);
                 $post_url = "http://www.facebook.com/".$post_values[0]."/posts/".$post_values[1];
                 $entry = str_replace('{url}', $post_url, $entry );
+				
                 $entry = str_replace('{more}', '[['.$post_url.'|'.$this->getLang('read_more').']]', $entry );               
-                
-                // Attachments
-                $attachment_content = '';
-                
-                $attachment = $values['attachment'];
-                                
-                if ( is_array( $attachment ) ) {
-                    // Get the attachment information
-                    $attachment_media = $attachment['media'][0];
-                    $attachment_type = $attachment_media['type'];
-                    $attachment_name = $attachment['name'];
-                    $attachment_caption = $attachment['caption'];
-                    $attachment_description = $attachment['description'];
-
-                    $href = $attachment_media['href'];
-                    $alt = $attachment_media['alt'];
-                    $src = $attachment_media['src'];
-                    
-                    if ( isset($src) && ($src != '' ) ) {
-                        // IF the url is wrapped, unwrap it
-                        $url_position = strpos($src, "url=");                      
-                        if ( $url_position !== false ) {
-                            $src = urldecode( substr( $src, $url_position + 4 ) );
-                        }
-                    }
-                                          
-                    // Process links                  
-                    if ( $attachment_type == 'link') {
-                        
-                        // Add the picture
-                        if ( isset($src) && ($src != '' )) {
-							$attachment_image = $this->makeImage( $href, $alt, $src, $data, $conf);
-                            $attachment_content .= $attachment_image;
-                        }
-                        // Add the link
-                        $attachment_content .= '[['.$href.' | '.$attachment_name.']]'."<html><br /></html>";
-                        // Add the caption
-                        if ( isset( $attachment_caption) && ($attachment_caption != '' )) { 
-                            $attachment_content .= '<sup> [['.$href.'|'.$attachment_caption.']] </sup>'."<html><br /></html>";
-                        }
-                        // Add the description
-                        if ( isset( $attachment_description) && ($attachment_description != '')) {
-                            $attachment_content .= $attachment_description;
-                        }
-                    }
-                    // Process photos
-                    else if ( $attachment_type == 'photo') {
-                        // Get the photo's section
-                        $photo = $attachment_media['photo'];
-                        try {
-                            $images = $photo['images'];
-                            $src = $images[count($images)-1]['src'];
-                        } catch (Exception $e) {
-                        
-                            $src = $attachment_media['src']; 
-                        }
-                         
-                        // Display the photo
-						$attachment_image = $this->makeImage( $href, $alt, $src, $data, $conf);
-                        $attachment_content .= $attachment_image;
-                    }
-                    // Process videos
-                    else if ( $attachment_type == 'video') {
-                        $attachment_content = '';
-                        
-                        // Add linked picture
-                        if ( isset($src) && ($src != '' )) {
-                            $attachment_content .= $this->makeImage( $href, $alt, $src, $data, $conf);                           
-                        }
-                        // Add the link
-                        $attachment_content .= '[['.$href.' | '.$attachment_name.']]'."<html><br /></html>";
-                        // Add the caption
-                        if ( isset( $attachment_caption) && ($attachment_caption != '' )) { 
-                            $attachment_content .= '<sup> [['.$href.'|'.$attachment_caption.']] </sup>'."<html><br /></html>";
-                        }
-                        // Add the description
-                        if ( isset( $attachment_description) && ($attachment_description != '')) {
-                            $attachment_content .= $attachment_description;
-                            $attachment_content .= '<html><br /></html>';
-                        }
-                    }
-                    $attachment_content .= '<html><br /><br /></html>';
-					if ( isset( $attachment_image) ) {
-						$entry = str_replace( '{attachment_image}', $attachment_image, $entry);
-						unset( $attachment_image );
-					}
-					else {
-						$entry = str_replace( '{attachment_image}', '', $entry);
-					}
-                }
-                // Replace the attachment tag with the attachment
-                $entry = str_replace('{attachment}', $attachment_content, $entry );
                 
                 // Add the entry to the content
                 $content .= $entry;
-                
-                // Only display a maximum number of entries
-                $displayed_entries++;
-                if ( isset($data[FB_WALL_NR_ENTRIES]) && $displayed_entries >= $data[FB_WALL_NR_ENTRIES] )
-                {
-                    break;
-                } 
+				
+				$numberOfEntries--;
+				if ( $numberOfEntries == 0 ) {
+					break;
+				}
             }
 		
 			//$renderer->doc .= $ret;
