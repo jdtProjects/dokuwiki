@@ -41,7 +41,7 @@ define( "FB_EVENTS_TEMPLATE", "template" );
  * 
  */
 class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
-{ 
+{
     function getInfo() {
       return array(
         'author' => 'J. Drost-Tenfelde',
@@ -145,7 +145,7 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
       	
 		return $params;
 	}
-    
+
 	/**
 	 * Retrieves the facebook events and parses them to HTML.
 	 */
@@ -193,12 +193,11 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			//$objects = json_decode($json, true, 512, JSON_BIGINT_AS_STRING);
 			$objects = json_decode($json, true);
 			
-			
 			// count the number of events
 			$event_count = count($objects['data']);
 			$displayed_entries = 0;
 			// Loop through the events
-			for ($index = 0; $index < $event_count; $index++){			
+			for ($index = $event_count - 1; $index >= 0; $index--){			
 				$event = $objects['data'][$index];
 				
 				date_default_timezone_set($event['timezone']);
@@ -230,9 +229,12 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 
 				
 				$pic = isset($event['cover']['source']) ? $event['cover']['source'] : "https://graph.facebook.com/v2.7/{$fb_page_id}/picture";
-				$pic_large = isset($event['cover']['source']) ? $event['cover']['source'] : "https://graph.facebook.com/v2.7/{$fb_page_id}/picture?type=large";
-				$pic_small = isset($event['cover']['source']) ? $event['cover']['source'] : "https://graph.facebook.com/v2.7/{$fb_page_id}/picture?type=small";
-
+				// Add a fix for urls with get parameters
+				if ( strpos($pic, '?') > 0 )
+				{
+					$pic .= '&.png';
+				}
+				
 				// place
 				$place_name = isset($event['place']['name']) ? $event['place']['name'] : "";
 				$street = isset($event['place']['location']['street']) ? $event['place']['location']['street'] : "";
@@ -260,10 +262,10 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 				$entry = str_replace('{city}', $city, $entry );
 				$entry = str_replace('{country}', $country, $entry );
 				$entry = str_replace('{zip}', $zip, $entry );
-				$entry = str_replace('{image}', $pic, $entry);
-				$entry = str_replace('{image_large}', $pic_large, $entry);
-				$entry = str_replace('{image_small}', $pic_small, $entry);
-				$entry = str_replace('{image_square}', $pic, $entry); // Backward compatibility
+				$entry = str_replace('{image}', $pic, $entry);		
+				$entry = str_replace('{image_large}', $pic, $entry);
+				$entry = str_replace('{image_small}', $pic, $entry);
+				$entry = str_replace('{image_square}', $pic, $entry);
 				
 				// DateTime
 				if ( (!isset( $data[FB_EVENTS_SHOW_END_TIMES])) || $data[FB_EVENTS_SHOW_END_TIMES] == '1' ) {
