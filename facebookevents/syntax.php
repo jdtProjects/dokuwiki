@@ -110,10 +110,8 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 		}
 		$params[FB_EVENTS_TEMPLATE] = $template;
 
-		// Get the date 'from' parameter
+		// Get the date 'from' & 'to' parameter
 		$params[FB_EVENTS_FROM_DATE] = strtotime($params[FB_EVENTS_FROM_DATE]);
-
-		// Get the date 'to' parameter
 		$params[FB_EVENTS_TO_DATE] = strtotime($params[FB_EVENTS_TO_DATE]);
 
 		// Sorting
@@ -165,22 +163,20 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			// Get the events
 			$since_date = $data[FB_EVENTS_FROM_DATE];
 			$until_date = $data[FB_EVENTS_TO_DATE];
+			$limit = $data[FB_EVENTS_NR_ENTRIES];
 
-			$fb_fields="id,name,description,place,timezone,start_time,end_time,cover";
+			$fb_fields="id,name,place,updated_time,timezone,start_time,end_time,cover,description,feed.limit(10){link,picture,source,message}";
 
-			$json_link = "https://graph.facebook.com/v2.7/{$fb_page_id}/events/?fields={$fb_fields}&access_token={$fb_access_token}&since={$since_date}&until={$until_date}";
+			$json_link = "https://graph.facebook.com/v2.7/{$fb_page_id}/events/?fields={$fb_fields}&access_token={$fb_access_token}&limit={$limit}&since={$since_date}&until={$until_date}";
 			$json = $this->getData($json_link);
 
 			//$objects = json_decode($json, true, 512, JSON_BIGINT_AS_STRING);
 			$objects = json_decode($json, true);
 
-			// count the number of events
-			$event_count = count($objects['data']);
-			$displayed_entries = 0;
-			// Loop through the events
-			for ($index = $event_count - 1; $index >= 0; $index--){
-				$event = $objects['data'][$index];
-
+			// Save timezone setting
+			$origin_timezone = date_default_timezone_get();
+			
+			foreach($objects['data'] as $event){
 				date_default_timezone_set($event['timezone']);
 
 				$start_date = date($date_format, strtotime($event['start_time']));
@@ -202,12 +198,11 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 						$description = substr($description, 0, $data[FB_EVENTS_LIMIT]);
 						// Find the first occurance of a space
 						$index = strrpos ($description, ' ');
-						$description = substr($description, 0, $index).'...';
+						$description = substr($description, 0, $index).'…';
 					}
 				}
-				$description = str_replace("\r\n", '<html><br /></html>', $description);
-				$description = str_replace("\n", '<html><br /></html>', $description);
-
+				$description = str_replace("\r", '', $description);
+				$description = str_replace("\n", "\\\\\n", $description);
 
 				$pic = isset($event['cover']['source']) ? $event['cover']['source'] : "https://graph.facebook.com/v2.7/{$fb_page_id}/picture";
 				// Add a fix for urls with get parameters
@@ -250,20 +245,17 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 
 				// DateTime
 				if ((!isset($data[FB_EVENTS_SHOW_END_TIMES])) || $data[FB_EVENTS_SHOW_END_TIMES] == '1') {
-
 					// Are they the same date?
 					$compare_start_date = date("Ymd", strtotime($event['start_time']));
 					$compare_end_date = date("Ymd", strtotime($event['end_time']));
 
 					if ($compare_start_date == $compare_end_date) {
 						$datetime_string = $start_date;
-						//if (isset($event['is_date_only']) && (!$event['is_date_only'])) {
-							$datetime_string = $datetime_string.' '.$start_time.' - '.$end_time;
+						$datetime_string = $datetime_string.' '.$start_time.' - '.$end_time;
 
-						//}
 						$entry = str_replace('{date}', $date_string, $entry);
 						$entry = str_replace('{datetime}', $datetime_string, $entry);
-											}
+					}
 					else {
 						$date_string = $start_date.' - '.$end_date;
 						$datetime_string = $date_string;
@@ -287,25 +279,16 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 
 				// Add the entry to the content
 				$content .= $entry;
-
-				// Only display a maximum number of entries (if set)
-				$displayed_entries++;
-				if (isset($data[FB_EVENTS_NR_ENTRIES]) && $displayed_entries >= $data[FB_EVENTS_NR_ENTRIES]) {
-					break;
-				}
 			}
 
-			//$renderer->doc .= $ret;
 			$html = p_render($mode, p_get_instructions($content), $info);
 			$renderer->doc .= $html;
 
 			// Set the timezone back to the original
-			//date_default_timezone_set($origin_timezone);
+			date_default_timezone_set($origin_timezone);
 
 			return true;
 		}
 		return false;
 	}
 }
-
-?>
