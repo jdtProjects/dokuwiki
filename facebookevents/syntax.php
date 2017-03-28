@@ -263,33 +263,36 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 				$entry = str_replace('{image_small}', $picSmall, $entry);
 				$entry = str_replace('{image_square}', $picSquare, $entry);
 
+				// Date
+				$dateStart = date($this->getConf(FB_EVENTS_DATE_FORMAT), strtotime($event['start_time']));
+				$dateEnd = date($this->getConf(FB_EVENTS_DATE_FORMAT), strtotime($event['end_time']));
+				$dateStart != $dateEnd ? $date = "{$dateStart} - {$dateEnd}" : $date = "{$dateStart}";
+				// Time
+				$timeStart = date($this->getConf(FB_EVENTS_TIME_FORMAT), strtotime($event['start_time']));
+				$timeEnd = date($this->getConf(FB_EVENTS_TIME_FORMAT), strtotime($event['end_time']));
+				$timeStart != $timeEnd ? $time = "{$timeStart} - {$timeEnd}" : $time = "{$timeStart}";
 				// DateTime
-				if ((!isset($data[FB_EVENTS_SHOW_END_TIMES])) || $data[FB_EVENTS_SHOW_END_TIMES] == '1') {
-					// Are they the same date?
-					$compare_start_date = date("Ymd", strtotime($event['start_time']));
-					$compare_end_date = date("Ymd", strtotime($event['end_time']));
-
-					if ($compare_start_date == $compare_end_date) {
-						$datetime_string = $start_date;
-						$datetime_string = $datetime_string.' '.$start_time.' - '.$end_time;
-
-						$entry = str_replace('{date}', $date_string, $entry);
-						$entry = str_replace('{datetime}', $datetime_string, $entry);
-					}
-					else {
-						$date_string = $start_date.' - '.$end_date;
-						$datetime_string = $date_string;
-						//if (isset($event['is_date_only']) && (!$event['is_date_only'])) {
-							$datetime_string =  $start_date.' '.$start_time.' - '.$end_date.' '.$end_time;
-						//}
-						$entry = str_replace('{date}', $date_string, $entry);
-						$entry = str_replace('{datetime}', $datetime_string, $entry);
-					}
+				$dateTimeStart = date($this->getConf(FB_EVENTS_TIME_FORMAT).', '.$this->getConf(FB_EVENTS_DATE_FORMAT), strtotime($event['start_time']));
+				$dateTimeEnd = date($this->getConf(FB_EVENTS_TIME_FORMAT).', '.$this->getConf(FB_EVENTS_DATE_FORMAT), strtotime($event['end_time']));
+				if($dateStart != $dateEnd) {
+					$dateTime = $timeStart.', '.$dateStart.' - '.$timeEnd.', '.$dateEnd;
 				}
 				else {
-					$entry = str_replace('{date}', $start_date, $entry);
-					$entry = str_replace('{datetime}', $start_date.' '.$start_time);
+					$dateTime = $timeStart.' - '.$timeEnd.', '.$dateEnd;
 				}
+
+				$entry = str_replace('{date}', $dateStart, $entry);
+				$entry = str_replace('{time}', $time, $entry);
+				$entry = str_replace('{datetime}', $dateTime, $entry);
+				$entry = str_replace('{startdatetime}', $dateTimeStart, $entry);
+				$entry = str_replace('{startdate}', $dateStart, $entry);
+				$entry = str_replace('{starttime}', $timeStart, $entry);
+				$entry = str_replace('{enddatetime}', $dateTimeEnd, $entry);
+				$entry = str_replace('{enddate}', $dateEnd, $entry);
+				$entry = str_replace('{endtime}', $timeEnd, $entry);
+				$entry = str_replace('{timestamp}', $event['start_time'], $entry);
+				$entry = str_replace('{starttimestamp}', $event['start_time'], $entry);
+				$entry = str_replace('{endtimestamp}', $event['end_time'], $entry);
 
 
 				// [[ url | read more ]
