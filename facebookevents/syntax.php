@@ -88,13 +88,13 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 
 		// Make sure the necessary data is set
 		if ( !$params[FB_EVENTS_APPLICATION_ID] ) {
-		  $this->error = $this->getLang('error_appid_not_set');
+		  $this->error = /*$this->getLang*/('error_appid_not_set');
 		}
 		if ( !$params[FB_EVENTS_SECRET] ) {
-		  $this->error = $this->getLang('error_secret_not_set');
+		  $this->error = /*$this->getLang*/('error_secret_not_set');
 		}
 		if ( !$params[FB_EVENTS_FAN_PAGE_ID] ) {
-		  $this->error = $this->getLang('error_fanpageid_not_set');
+		  $this->error = /*$this->getLang*/('error_fanpageid_not_set');
 		}
 		if ( !$params[FB_EVENTS_SHOW_AS] ) {
 			$params[FB_EVENTS_SHOW_AS] = 'default';
@@ -157,7 +157,7 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 
 			$elements = explode('"',$token_data);
 			if ( count($elements) < 9) {
-				$renderer->doc .= 'Access token could not be retrieved for Plugin '.$info['name'].': '.$this->error;
+				$renderer->doc .= 'Access token could not be retrieved for Plugin '.$info['name'].': '.$this->error.' | '.$token_data;
 				return;
 			}
 			$fb_access_token = $elements[3];
