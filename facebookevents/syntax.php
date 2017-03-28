@@ -175,7 +175,7 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			$until_date = $data[FB_EVENTS_TO_DATE];
 			$limit = $data[FB_EVENTS_NR_ENTRIES];
 
-			$fb_fields="id,name,place,updated_time,timezone,start_time,end_time,cover,description,feed.limit(10){link,picture,source,message}";
+			$fb_fields="id,name,place,updated_time,timezone,start_time,end_time,cover,photos{picture},picture{url},description,feed.limit(10){link,picture,source,message}";
 
 			$json_link = "https://graph.facebook.com/v2.7/{$fb_page_id}/events/?fields={$fb_fields}&access_token={$fb_access_token}&limit={$limit}&since={$since_date}&until={$until_date}";
 			$json = $this->getData($json_link);
@@ -224,13 +224,13 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 				$description = str_replace("\r", '', $description);
 				$description = str_replace("\n", "\\\\\n", $description);
 
-				$pic = isset($event['cover']['source']) ? $event['cover']['source'] : "https://graph.facebook.com/v2.7/{$fb_page_id}/picture";
-				// Add a fix for urls with get parameters
-				if (strpos($pic, '?') > 0)
-				{
-					$pic .= '&.png';
-				}
-
+				$picFull = isset($event['cover']['source']) ? $event['cover']['source'] : "https://graph.facebook.com/v2.7/{$fb_page_id}/picture";
+				if (strpos($picFull, '?') > 0) $picFull .= '&.png';
+				$picSmall = isset($event['photos']['data'][0]['picture']) ? $event['photos']['data'][0]['picture'] : "https://graph.facebook.com/v2.7/{$fb_page_id}/picture";
+				if (strpos($picSmall, '?') > 0) $picSmall .= '&.png';
+				$picSquare = isset($event['picture']['data']['url']) ? $event['picture']['data']['url'] : "https://graph.facebook.com/v2.7/{$fb_page_id}/picture";
+				if (strpos($picSquare, '?') > 0) $picSquare .= '&.png';
+				
 				// place
 				$place_name = isset($event['place']['name']) ? $event['place']['name'] : "";
 				$street = isset($event['place']['location']['street']) ? $event['place']['location']['street'] : "";
@@ -258,10 +258,10 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 				$entry = str_replace('{city}', $city, $entry);
 				$entry = str_replace('{country}', $country, $entry);
 				$entry = str_replace('{zip}', $zip, $entry);
-				$entry = str_replace('{image}', $pic, $entry);
-				$entry = str_replace('{image_large}', $pic, $entry);
-				$entry = str_replace('{image_small}', $pic, $entry);
-				$entry = str_replace('{image_square}', $pic, $entry);
+				$entry = str_replace('{image}', $picFull, $entry);
+				$entry = str_replace('{image_large}', $picFull, $entry);
+				$entry = str_replace('{image_small}', $picSmall, $entry);
+				$entry = str_replace('{image_square}', $picSquare, $entry);
 
 				// DateTime
 				if ((!isset($data[FB_EVENTS_SHOW_END_TIMES])) || $data[FB_EVENTS_SHOW_END_TIMES] == '1') {
