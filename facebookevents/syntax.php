@@ -25,6 +25,7 @@ define("FB_EVENTS_FAN_PAGE_ID", "fanpageid");
 define("FB_EVENTS_SHOW_AS", "showAs");
 define("FB_EVENTS_FROM_DATE", "from");
 define("FB_EVENTS_TO_DATE", "to");
+define("FB_EVENTS_SORT", "sort");
 define("FB_EVENTS_NR_ENTRIES", "numberOfEntries");
 define("FB_EVENTS_SHOW_END_TIMES", "showEndTimes");
 define("FB_EVENTS_LIMIT", "limit");
@@ -33,6 +34,15 @@ define("FB_EVENTS_LIMIT", "limit");
 define("FB_EVENTS_DATE_FORMAT", "dformat");
 define("FB_EVENTS_TIME_FORMAT", "tformat");
 define("FB_EVENTS_TEMPLATE", "template");
+
+// Helper sorting functions
+function compareEventStartDateAsc($a, $b) {
+	return strtotime($a['start_time']) - strtotime($b['start_time']);
+}
+function compareEventStartDateDesc($b, $a) {
+	return strtotime($a['start_time']) - strtotime($b['start_time']);
+}
+
 
 /**
  * This plugin retrieves facebook events and displays them in HTML.
@@ -176,7 +186,17 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			// Save timezone setting
 			$origin_timezone = date_default_timezone_get();
 			
-			foreach($objects['data'] as $event){
+			// Sort array of events by start time
+			$events = $objects['data'];
+			if ($data[FB_EVENTS_SORT] === 'ASC') {
+				usort($events, 'compareEventStartDateAsc');
+			}
+			else {
+				usort($events, 'compareEventStartDateDesc');
+			}
+			
+			// Iterate over events
+			foreach($events as $event){
 				date_default_timezone_set($event['timezone']);
 
 				$start_date = date($date_format, strtotime($event['start_time']));
@@ -292,3 +312,4 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 		return false;
 	}
 }
+
