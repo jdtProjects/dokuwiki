@@ -19,8 +19,8 @@ if(!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN',DOKU_INC.'lib/plugins/');
 require_once(DOKU_PLUGIN.'syntax.php');
 
 // Syntax parameters
-define("FB_EVENTS_APPLICATION_ID", "appid");
-define("FB_EVENTS_SECRET", "secret");
+define("FB_EVENTS_APPLICATION_ID", "fb_application_id");
+define("FB_EVENTS_APPLICATION_SECRET", "fb_application_secret");
 define("FB_EVENTS_FAN_PAGE_ID", "fanpageid");
 define("FB_EVENTS_SHOW_AS", "showAs");
 define("FB_EVENTS_WALLPOSTS_SHOW_AS", "showPostsAs");
@@ -100,11 +100,11 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 		parse_str($match, $params);
 
 		// Make sure the necessary data is set
-		if (!$params[FB_EVENTS_APPLICATION_ID]) {
+		if ($this->getConf(FB_EVENTS_APPLICATION_ID) == '') {
 		  $this->error = /*$this->getLang*/('error_appid_not_set');
 		}
-		if (!$params[FB_EVENTS_SECRET]) {
-		  $this->error = /*$this->getLang*/('error_secret_not_set');
+		if ($this->getConf(FB_EVENTS_APPLICATION_SECRET) == '') {
+		  $this->error = /*$this->getLang*/('error_appsecret_not_set');
 		}
 		if (!$params[FB_EVENTS_FAN_PAGE_ID]) {
 		  $this->error = /*$this->getLang*/('error_fanpageid_not_set');
@@ -171,8 +171,8 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			$time_format = $this->getConf(FB_EVENTS_TIME_FORMAT);
 
 			// Get the facebook information
-			$fb_app_id = $data[FB_EVENTS_APPLICATION_ID];
-			$fb_secret = $data[FB_EVENTS_SECRET];
+			$fb_app_id = $this->getConf(FB_EVENTS_APPLICATION_ID);
+			$fb_secret = $this->getConf(FB_EVENTS_APPLICATION_SECRET);
 			$fb_page_id = $data[FB_EVENTS_FAN_PAGE_ID];
 
 			// Get the access token using app-id and secret
@@ -191,7 +191,7 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			$until_date = $data[FB_EVENTS_TO_DATE];
 			$limit = $data[FB_EVENTS_NR_ENTRIES];
 
-			$fb_fields="id,name,place,updated_time,timezone,start_time,end_time,cover,photos{picture},picture{url},description,feed.limit(10){from{name,picture},created_time,type,message,permalink_url,source,picture}";
+			$fb_fields="id,name,place,updated_time,timezone,start_time,end_time,cover,photos{picture},picture{url},description,feed.limit(10){from{name,picture},created_time,type,message,link,permalink_url,source,picture}";
 
 			$json_link = "https://graph.facebook.com/v2.7/{$fb_page_id}/events/?fields={$fb_fields}&access_token={$fb_access_token}&limit={$limit}&since={$since_date}&until={$until_date}";
 			$json = $this->getData($json_link);
@@ -332,7 +332,15 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 					$description = str_replace("\r", '', $description);
 					$description = str_replace("\n", "\n{$quoteprefix}", $description);
 
-					isset($post['source']) ? $mediaSource = $post['source'].'&.jpg' : $mediaSource = '';
+					if(isset($post['source'])) {
+						$mediaSource = $post['source'].'&.jpg';
+					}
+					elseif(isset($post['link'])) {
+						$mediaSource = $post['link'];
+					}
+					else {
+						$mediaSource = '';
+					}
 					isset($post['picture']) ? $mediaImage = $post['picture'].'&.jpg' : $mediaImage = '';
 
 					$wallpost = str_replace('{wp_userImage}', $userImage, $wallpost);
