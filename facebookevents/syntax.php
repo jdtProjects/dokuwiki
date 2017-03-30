@@ -6,7 +6,7 @@
  * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
  * @version    2.0
  * @date       March 2017
- * @author     J. Drost-Tenfelde <info@drost-tenfelde.de>, G. Surrel <gregoire.surrel.org>
+ * @author     J. Drost-Tenfelde <info@drost-tenfelde.de>, G. Surrel <http://gregoire.surrel.org>
  *
  * This plugin uses Facebook's Graph API v2.7.
  *
@@ -197,7 +197,6 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			$json_link = "https://graph.facebook.com/v2.7/{$fb_page_id}/events/?fields={$fb_fields}&access_token={$fb_access_token}&limit={$limit}&since={$since_date}&until={$until_date}";
 			$json = $this->getData($json_link);
 
-			//$objects = json_decode($json, true, 512, JSON_BIGINT_AS_STRING);
 			$objects = json_decode($json, true);
 
 			// Save timezone setting
