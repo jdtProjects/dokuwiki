@@ -1,5 +1,8 @@
 <?php
 
+$meta['fb_application_id'] = array('string');
+$meta['fb_application_secret'] = array('string');
+
 $meta['dformat'] = array('string');
 $meta['tformat'] = array('string');
 
