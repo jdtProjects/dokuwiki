@@ -23,17 +23,20 @@ define("FB_EVENTS_APPLICATION_ID", "appid");
 define("FB_EVENTS_SECRET", "secret");
 define("FB_EVENTS_FAN_PAGE_ID", "fanpageid");
 define("FB_EVENTS_SHOW_AS", "showAs");
+define("FB_EVENTS_WALLPOSTS_SHOW_AS", "showPostsAs");
 define("FB_EVENTS_FROM_DATE", "from");
 define("FB_EVENTS_TO_DATE", "to");
 define("FB_EVENTS_SORT", "sort");
 define("FB_EVENTS_NR_ENTRIES", "numberOfEntries");
 define("FB_EVENTS_SHOW_END_TIMES", "showEndTimes");
 define("FB_EVENTS_LIMIT", "limit");
+define("FB_EVENTS_QUOTE_PREFIX", "quoteprefix");
 
 // Configuration parameters
 define("FB_EVENTS_DATE_FORMAT", "dformat");
 define("FB_EVENTS_TIME_FORMAT", "tformat");
 define("FB_EVENTS_TEMPLATE", "template");
+define("FB_EVENTS_WALLPOSTS_TEMPLATE", "wallposts");
 
 // Helper sorting functions
 function compareEventStartDateAsc($a, $b) {
@@ -109,6 +112,12 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 		if (!$params[FB_EVENTS_SHOW_AS]) {
 			$params[FB_EVENTS_SHOW_AS] = 'default';
 		}
+		if (!$params[FB_EVENTS_WALLPOSTS_SHOW_AS]) {
+			$params[FB_EVENTS_WALLPOSTS_SHOW_AS] = 'wallposts_default';
+		}
+		if (!$params[FB_EVENTS_QUOTE_PREFIX]) {
+			$params[FB_EVENTS_QUOTE_PREFIX] = '> ';
+		}
 		if (!$params[FB_EVENTS_LIMIT]) {
 			$params[FB_EVENTS_LIMIT] = 0;
 		}
@@ -119,6 +128,13 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			$template = $this->getConf('default');
 		}
 		$params[FB_EVENTS_TEMPLATE] = $template;
+
+		// Get the appropriate display template for comments
+		$wallposts_template = $this->getConf($params[FB_EVENTS_WALLPOSTS_SHOW_AS]);
+		if (!isset($wallposts_template) || $wallposts_template == '') {
+			$wallposts_template = $this->getConf('wallposts_default');
+		}
+		$params[FB_EVENTS_WALLPOSTS_TEMPLATE] = $wallposts_template;
 
 		// Get the date 'from' & 'to' parameter
 		$params[FB_EVENTS_FROM_DATE] = strtotime($params[FB_EVENTS_FROM_DATE]);
@@ -175,7 +191,7 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			$until_date = $data[FB_EVENTS_TO_DATE];
 			$limit = $data[FB_EVENTS_NR_ENTRIES];
 
-			$fb_fields="id,name,place,updated_time,timezone,start_time,end_time,cover,photos{picture},picture{url},description,feed.limit(10){link,picture,source,message}";
+			$fb_fields="id,name,place,updated_time,timezone,start_time,end_time,cover,photos{picture},picture{url},description,feed.limit(10){from{name,picture},created_time,type,message,permalink_url,source,picture}";
 
 			$json_link = "https://graph.facebook.com/v2.7/{$fb_page_id}/events/?fields={$fb_fields}&access_token={$fb_access_token}&limit={$limit}&since={$since_date}&until={$until_date}";
 			$json = $this->getData($json_link);
@@ -185,7 +201,7 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 
 			// Save timezone setting
 			$origin_timezone = date_default_timezone_get();
-			
+
 			// Sort array of events by start time
 			$events = $objects['data'];
 			if ($data[FB_EVENTS_SORT] === 'ASC') {
@@ -194,7 +210,7 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			else {
 				usort($events, 'compareEventStartDateDesc');
 			}
-			
+
 			// Iterate over events
 			foreach($events as $event){
 				date_default_timezone_set($event['timezone']);
@@ -225,12 +241,12 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 				$description = str_replace("\n", "\\\\\n", $description);
 
 				$picFull = isset($event['cover']['source']) ? $event['cover']['source'] : "https://graph.facebook.com/v2.7/{$fb_page_id}/picture";
-				if (strpos($picFull, '?') > 0) $picFull .= '&.png';
+				if (strpos($picFull, '?') > 0) $picFull .= '&.jpg';
 				$picSmall = isset($event['photos']['data'][0]['picture']) ? $event['photos']['data'][0]['picture'] : "https://graph.facebook.com/v2.7/{$fb_page_id}/picture";
-				if (strpos($picSmall, '?') > 0) $picSmall .= '&.png';
+				if (strpos($picSmall, '?') > 0) $picSmall .= '&.jpg';
 				$picSquare = isset($event['picture']['data']['url']) ? $event['picture']['data']['url'] : "https://graph.facebook.com/v2.7/{$fb_page_id}/picture";
-				if (strpos($picSquare, '?') > 0) $picSquare .= '&.png';
-				
+				if (strpos($picSquare, '?') > 0) $picSquare .= '&.jpg';
+
 				// place
 				$place_name = isset($event['place']['name']) ? $event['place']['name'] : "";
 				$street = isset($event['place']['location']['street']) ? $event['place']['location']['street'] : "";
@@ -248,7 +264,7 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 				}
 
 				// Build the entry
-				$entry = $data['template'];
+				$entry = $data[FB_EVENTS_TEMPLATE];
 
 				// Replace the values
 				$entry = str_replace('{title}', $name, $entry);
@@ -294,11 +310,42 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 				$entry = str_replace('{starttimestamp}', $event['start_time'], $entry);
 				$entry = str_replace('{endtimestamp}', $event['end_time'], $entry);
 
-
 				// [[ url | read more ]
 				$event_url = "http://www.facebook.com/events/".$eid;
 				$entry = str_replace('{url}', $event_url, $entry);
 				$entry = str_replace('{more}', '[['.$event_url.'|'.$this->getLang('read_more').']]', $entry);
+
+				// Handle wall posts
+				$wallposts = '';
+				foreach($event['feed']['data'] as $post) {
+					$wallpost = $data[FB_EVENTS_WALLPOSTS_TEMPLATE];
+					$quoteprefix = $data[FB_EVENTS_QUOTE_PREFIX];
+
+					$userImage = $post['from']['picture']['data']['url'].'&.jpg';
+					$userName = $post['from']['name'];
+
+					$postDateTime = date($this->getConf(FB_EVENTS_DATE_FORMAT), strtotime($post['created_time']));
+
+					$postLink = $post['permalink_url'];
+
+					$description = $quoteprefix.$post['message'];
+					$description = str_replace("\r", '', $description);
+					$description = str_replace("\n", "\n{$quoteprefix}", $description);
+
+					isset($post['source']) ? $mediaSource = $post['source'].'&.jpg' : $mediaSource = '';
+					isset($post['picture']) ? $mediaImage = $post['picture'].'&.jpg' : $mediaImage = '';
+
+					$wallpost = str_replace('{wp_userImage}', $userImage, $wallpost);
+					$wallpost = str_replace('{wp_userName}', $userName, $wallpost);
+					$wallpost = str_replace('{wp_datetime}', $postDateTime, $wallpost);
+					$wallpost = str_replace('{wp_content}', $description, $wallpost);
+					$wallpost = str_replace('{wp_mediaSource}', $mediaSource, $wallpost);
+					$wallpost = str_replace('{wp_mediaImage}', $mediaImage, $wallpost);
+					$wallpost = str_replace('{wp_permalink}', $postLink, $wallpost);
+
+					$wallposts .= $wallpost;
+				}
+				$entry = str_replace('{wallposts}', $wallposts, $entry);
 
 				// Add the entry to the content
 				$content .= $entry;
