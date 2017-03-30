@@ -4,9 +4,9 @@
  * Plugin facebookevents: Displays facebook events.
  *
  * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
- * @version    1.2
- * @date       September 2016
- * @author     J. Drost-Tenfelde <info@drost-tenfelde.de>
+ * @version    2.0
+ * @date       March 2017
+ * @author     J. Drost-Tenfelde <info@drost-tenfelde.de>, G. Surrel <https://gregoire.surrel.org>
  *
  * This plugin uses Facebook's Graph API v2.7.
  *
@@ -50,7 +50,8 @@ function compareEventStartDateDesc($b, $a) {
 /**
  * This plugin retrieves facebook events and displays them in HTML.
  *
- * Usage: {{facebookevents#appid=1234&secret=12345&fanpageid=12345&showAs=default}}
+ * Usage (simple): {{facebookevents>fanpageid=12345}}
+ * Usage (complex): {{facebookevents>fanpageid=12345&showAs=table&showPostsAs=wallposts_alternate&from=-2 weeks&to=today}}
  *
  */
 class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
@@ -92,7 +93,7 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 	}
 
 	/**
-	 * parse parameters from the {{facebookevents#...}} tag.
+	 * parse parameters from the {{facebookevents>...}} tag.
 	 * @return an array that will be passed to the renderer function
 	 */
 	function handle($match, $state, $pos, &$handler) {
@@ -196,7 +197,6 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			$json_link = "https://graph.facebook.com/v2.7/{$fb_page_id}/events/?fields={$fb_fields}&access_token={$fb_access_token}&limit={$limit}&since={$since_date}&until={$until_date}";
 			$json = $this->getData($json_link);
 
-			//$objects = json_decode($json, true, 512, JSON_BIGINT_AS_STRING);
 			$objects = json_decode($json, true);
 
 			// Save timezone setting
