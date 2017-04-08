@@ -171,15 +171,23 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			$fb_page_id = $data[FB_EVENTS_FAN_PAGE_ID];
 			
 			// Get the access token using app-id and secret
-			$token_url ="https://graph.facebook.com/oauth/access_token?client_id={$fb_app_id}&client_secret={$fb_secret}&grant_type=client_credentials";
-			$token_data = $this->getData( $token_url );
-			
-			$elements = split("=", $token_data );
-			if ( count($elements) < 2) {
+			$token_url ="https://graph.facebook.com/oauth/access_token?client_id={$fb_app_id}&client_secret={$fb_secret}&grant_type=client_credentials";		
+					
+			$token_data = file_get_contents($token_url);
+			if ( !isset($token_data ) ) {
 				$renderer->doc .= 'Access token could not be retrieved for Plugin '.$info['name'].': '.$this->error;
-				return;
+                return;
 			}
-			$fb_access_token = $elements[1];
+			else {
+				// Attempt to decode json
+				try {
+					$obj = json_decode($token_data);
+					$fb_access_token = $obj->{'access_token'};
+				}
+				catch ( Exception $exception ) {
+					$fb_access_token = split("=", $token_data )[1];
+				}
+			}
 			
 			// Get the events
 			$since_date = $data[FB_EVENTS_FROM_DATE];
