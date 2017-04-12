@@ -1,7 +1,7 @@
 base   facebookevents
-author Jannes Drost-Tenfelde
+author Jannes Drost-Tenfelde, Grégoire Surrel
 email  info@drost-tenfelde.de
-date   2016-09-29
+date   2017-04-12
 name   facebookevents Plugin
 desc   Allows you to display facebook events in Dokuwiki
 url    https://www.dokuwiki.org/plugin:facebookevents
