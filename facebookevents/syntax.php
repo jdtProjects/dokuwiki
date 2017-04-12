@@ -197,6 +197,7 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			$json_link = "https://graph.facebook.com/v2.7/{$fb_page_id}/events/?fields={$fb_fields}&access_token={$fb_access_token}&limit={$limit}&since={$since_date}&until={$until_date}";
 			$json = $this->getData($json_link);
 
+			//$objects = json_decode($json, true, 512, JSON_BIGINT_AS_STRING);
 			$objects = json_decode($json, true);
 
 			// Save timezone setting
@@ -255,12 +256,15 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 				$zip = isset($event['place']['location']['zip']) ? $event['place']['location']['zip'] : "";
 
 				$location="";
+				$location_address="";
 
 				if ($place_name && $street & $city && $country && $zip){
-					$location = "{$place_name}, {$street}, {$zip} {$city}, {$country}";
+					$location = "{$place_name}";
+					$location_address = "{$street}, {$zip} {$city}, {$country}";
 				}
 				else{
-					$location = "Location not set or event data is too old.";
+					$location = '?';
+					$location_address = '?';
 				}
 
 				// Build the entry
@@ -284,10 +288,32 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 					$dateTime = $timeStart.' - '.$timeEnd.', '.$dateEnd;
 				}
 
+				// Metadata
+				$microdata = '<html><script type="application/ld+json">
+					{
+					  "@context": "http://schema.org",
+					  "@type": "Event",
+					  "name": "{title}",
+					  "startDate" : "{starttimestamp}",
+					  "endDate" : "{endtimestamp}",
+					  "url" : "{url}",
+					  "location" : {
+						"@type" : "Place",
+						"name" : "{location}",
+						"address" : "{location_address}"
+					  },
+					  "description": "{description}",
+					  "image": "{image}"
+					}
+					</script></html>';
+				$microdata = str_replace('{description}', str_replace("\\\\\n", "\\n", str_replace('"', "'", $description)), $microdata);
+				$entry = str_replace('{microdata}', $microdata, $entry);
+
 				// Replace the values
 				$entry = str_replace('{title}', $name, $entry);
 				$entry = str_replace('{description}', $description, $entry);
 				$entry = str_replace('{location}', $location, $entry);
+				$entry = str_replace('{location_address}', $location_address, $entry);
 				$entry = str_replace('{place}', $place_name, $entry);
 				$entry = str_replace('{city}', $city, $entry);
 				$entry = str_replace('{country}', $country, $entry);
@@ -306,14 +332,14 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 				$entry = str_replace('{enddatetime}', $dateTimeEnd, $entry);
 				$entry = str_replace('{enddate}', $dateEnd, $entry);
 				$entry = str_replace('{endtime}', $timeEnd, $entry);
-				$entry = str_replace('{timestamp}', strtotime($event['start_time']), $entry);
-				$entry = str_replace('{starttimestamp}', strtotime($event['start_time']), $entry);
-				$entry = str_replace('{endtimestamp}', strtotime($event['end_time']), $entry);
+				$entry = str_replace('{timestamp}', date('c', strtotime($event['start_time'])), $entry);
+				$entry = str_replace('{starttimestamp}', date('c', strtotime($event['start_time'])), $entry);
+				$entry = str_replace('{endtimestamp}', date('c', strtotime($event['end_time'])), $entry);
 				// [[ url | read more ]
 				$event_url = "http://www.facebook.com/events/".$eid;
 				$entry = str_replace('{url}', $event_url, $entry);
 				$entry = str_replace('{more}', '[['.$event_url.'|'.$this->getLang('read_more').']]', $entry);
-
+				
 				// Handle wall posts
 				$wallposts = '';
 				foreach($event['feed']['data'] as $post) {
