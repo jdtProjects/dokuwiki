@@ -4,8 +4,8 @@
  * Plugin facebookevents: Displays facebook events.
  *
  * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
- * @version    2.0
- * @date       March 2017
+ * @version    2.1
+ * @date       April 2017
  * @author     J. Drost-Tenfelde <info@drost-tenfelde.de>, G. Surrel <http://gregoire.surrel.org>
  *
  * This plugin uses Facebook's Graph API v2.7.
