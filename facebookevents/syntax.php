@@ -5,8 +5,9 @@
  *
  * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
  * @version    2.1
- * @date       April 2017
- * @author     J. Drost-Tenfelde <info@drost-tenfelde.de>, G. Surrel <http://gregoire.surrel.org>
+ * @date       May 2017
+ * @author     J. Drost-Tenfelde <info@drost-tenfelde.de>
+ * @author     G. Surrel <gregoire.surrel.org>
  *
  * This plugin uses Facebook's Graph API v2.7.
  *
@@ -137,9 +138,9 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 		}
 		$params[FB_EVENTS_WALLPOSTS_TEMPLATE] = $wallposts_template;
 
-		// Get the date 'from' & 'to' parameter
-		$params[FB_EVENTS_FROM_DATE] = strtotime($params[FB_EVENTS_FROM_DATE]);
-		$params[FB_EVENTS_TO_DATE] = strtotime($params[FB_EVENTS_TO_DATE]);
+
+
+
 
 		// Sorting
 		if (!$params[FB_EVENTS_SORT]) {
@@ -188,8 +189,8 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			$fb_access_token = $elements[3];
 
 			// Get the events
-			$since_date = $data[FB_EVENTS_FROM_DATE];
-			$until_date = $data[FB_EVENTS_TO_DATE];
+			$since_date = strtotime($data[FB_EVENTS_FROM_DATE]);
+			$until_date = strtotime($data[FB_EVENTS_TO_DATE]);
 			$limit = $data[FB_EVENTS_NR_ENTRIES];
 
 			$fb_fields="id,name,place,updated_time,timezone,start_time,end_time,cover,photos{picture},picture{url},description,feed.limit(10){from{name,picture},created_time,type,message,link,permalink_url,source,picture}";
