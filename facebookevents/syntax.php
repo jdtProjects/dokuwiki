@@ -1,15 +1,14 @@
 <?php
 
 /**
- * Plugin facebookevents: Displays facebook events.
+ * Plugin import_facebook_events: Displays facebook events.
  *
  * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
- * @version    2.1
- * @date       May 2017
- * @author     J. Drost-Tenfelde <info@drost-tenfelde.de>
- * @author     G. Surrel <gregoire.surrel.org>
+ * @version    3.0
+ * @date       March 2018
+ * @author     G. Surrel <gregoire.surrel.org>, J. Drost-Tenfelde <info@drost-tenfelde.de>
  *
- * This plugin uses Facebook's Graph API v2.7.
+ * This plugin uses Facebook's Graph API v2.12.
  *
  */
 
@@ -59,12 +58,12 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 {
 	function getInfo() {
 	  return array(
-		'author' => 'J. Drost-Tenfelde, G. Surrel',
-		'email'  => 'info@drost-tenfelde.de',
-		'date'   => '2017-03-28',
-		'name'   => 'facebookevents',
+		'author' => 'G. Surrel, J. Drost-Tenfelde',
+		'email'  => '',
+		'date'   => '2018-03-07',
+		'name'   => 'import_facebook_events',
 		'desc'   => 'Displays facebook events as HTML',
-		'url'    => 'https://www.dokuwiki.org/plugin:facebookevents',
+		'url'    => 'https://www.dokuwiki.org/plugin:import_facebook_events',
 	 );
 	}
 
@@ -138,10 +137,6 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 		}
 		$params[FB_EVENTS_WALLPOSTS_TEMPLATE] = $wallposts_template;
 
-
-
-
-
 		// Sorting
 		if (!$params[FB_EVENTS_SORT]) {
 			$params[FB_EVENTS_SORT] = 'ASC';
@@ -158,6 +153,9 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 	 */
 	function render($mode, &$renderer, $data) {
 		$info = $this->getInfo();
+		
+		// Disable caching because the result depends on an external ressource
+		//$renderer->info['cache'] = false;
 
 		$content = '';
 
@@ -189,14 +187,17 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 			$fb_access_token = $elements[3];
 
 			// Get the events
-			$since_date = strtotime($data[FB_EVENTS_FROM_DATE]);
+			$since_date = strtotime("-2 month", $data[FB_EVENTS_FROM_DATE]); // Go back in time as recurrent events disappear
 			$until_date = strtotime($data[FB_EVENTS_TO_DATE]);
 			$limit = $data[FB_EVENTS_NR_ENTRIES];
 
-			$fb_fields="id,name,place,updated_time,timezone,start_time,end_time,cover,photos{picture},picture{url},description,feed.limit(10){from{name,picture},created_time,type,message,link,permalink_url,source,picture}";
+			$fb_fields="id,name,place,updated_time,timezone,start_time,end_time,event_times,cover,photos{picture},picture{url},description,feed.limit(10){from{name,picture},created_time,type,message,link,permalink_url,source,picture}";
 
 			$json_link = "https://graph.facebook.com/v2.7/{$fb_page_id}/events/?fields={$fb_fields}&access_token={$fb_access_token}&limit={$limit}&since={$since_date}&until={$until_date}";
 			$json = $this->getData($json_link);
+			
+			dbglog(date(DATE_ATOM));
+			dbglog($json_link);
 
 			//$objects = json_decode($json, true, 512, JSON_BIGINT_AS_STRING);
 			$objects = json_decode($json, true);
@@ -213,13 +214,42 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 				usort($events, 'compareEventStartDateDesc');
 			}
 
+            // Duplicate recurring events
+            foreach($events as $i => $event){
+                if (isset($event['event_times'])) {
+                    $event_times = $event['event_times'];
+                    unset($events[$i]);
+                    foreach($event_times as $event_time) {
+                        $new_event = $event;
+                        unset($new_event['event_times']);
+                        $new_event['start_time'] = $event_time['start_time'];
+                        $new_event['end_time'] = $event_time['end_time'];
+                        $new_event['id'] = $event_time['id'];
+                        
+                        array_push($events, $new_event);
+                    }
+                }
+            }
+            
+            // Sort the events according to starting date
+            function cmp($a, $b) {
+                if ($a['start_time'] == $b['start_time']) {
+                    return 0;
+                }
+                    return ($a['start_time'] < $b['start_time']) ? -1 : 1;
+            }
+            uasort($events, 'cmp');
+            
 			// Iterate over events
 			foreach($events as $event){
+                
 				date_default_timezone_set($event['timezone']);
 
 				$start_date = date($date_format, strtotime($event['start_time']));
 				$start_time = date($time_format, strtotime($event['start_time']));
 
+                if(strtotime($event['start_time']) < strtotime($data[FB_EVENTS_FROM_DATE])) continue;
+                
 				if (!isset($event['end_time'])) {
 					$event['end_time'] = $event['start_time'];
 				}
@@ -290,24 +320,25 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 				}
 
 				// Metadata
-				$microdata = '<html><script type="application/ld+json">
-					{
-					  "@context": "http://schema.org",
-					  "@type": "Event",
-					  "name": "{title}",
-					  "startDate" : "{starttimestamp}",
-					  "endDate" : "{endtimestamp}",
-					  "url" : "{url}",
-					  "location" : {
-						"@type" : "Place",
-						"name" : "{location}",
-						"address" : "{location_address}"
-					  },
-					  "description": "{description}",
-					  "image": "{image}"
-					}
-					</script></html>';
-				$microdata = str_replace('{description}', str_replace("\\\\\n", "\\n", str_replace('"', "'", $description)), $microdata);
+				$microdata = '<html><script type="application/ld+json">{json_microdata}</script></html>';
+                $json_microdata = array (
+                    '@context' => 'http://schema.org',
+                    '@type' => 'Event',
+                    'name' => '{title}',
+                    'startDate' => '{starttimestamp}',
+                    'endDate' => '{endtimestamp}',
+                    'url' => '{url}',
+                    'location' => 
+                    array (
+                        '@type' => 'Place',
+                        'name' => '{location}',
+                        'address' => '{location_address}',
+                    ),
+                    'description' => $description,
+                    'image' => '{image}',
+                );
+					
+				$microdata = str_replace('{json_microdata}', json_encode($json_microdata));
 				$entry = str_replace('{microdata}', $microdata, $entry);
 
 				// Replace the values
@@ -396,4 +427,3 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 		return false;
 	}
 }
-
