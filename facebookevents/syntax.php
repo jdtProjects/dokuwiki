@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Plugin import_facebook_events: Displays facebook events.
+ * Plugin importfacebookevents: Displays facebook events.
  *
  * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
  * @version    3.0
@@ -61,9 +61,9 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 		'author' => 'G. Surrel, J. Drost-Tenfelde',
 		'email'  => '',
 		'date'   => '2018-03-07',
-		'name'   => 'import_facebook_events',
+		'name'   => 'importfacebookevents',
 		'desc'   => 'Displays facebook events as HTML',
-		'url'    => 'https://www.dokuwiki.org/plugin:import_facebook_events',
+		'url'    => 'https://www.dokuwiki.org/plugin:importfacebookevents',
 	 );
 	}
 
