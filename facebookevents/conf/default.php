@@ -1,6 +1,6 @@
 <?php
 
-# Default configuration for import_Facebook_events Dokuwiki Plugin
+# Default configuration for importfacebookevents Dokuwiki Plugin
 
 # Date format that is used to display the from and to values
 # If you leave this empty '', then the default dformat from /conf/dokuwiki.php will be used.
