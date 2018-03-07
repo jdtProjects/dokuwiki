@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Plugin importfacebookevents: Displays facebook events.
+ * Plugin import_facebook_events: Displays facebook events.
  *
  * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
  * @version    3.0
@@ -54,16 +54,16 @@ function compareEventStartDateDesc($b, $a) {
  * Usage (complex): {{facebookevents>fanpageid=12345&showAs=table&showPostsAs=wallposts_alternate&from=-2 weeks&to=today}}
  *
  */
-class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
+class syntax_plugin_importfacebookevents extends DokuWiki_Syntax_Plugin
 {
 	function getInfo() {
 	  return array(
 		'author' => 'G. Surrel, J. Drost-Tenfelde',
 		'email'  => '',
 		'date'   => '2018-03-07',
-		'name'   => 'importfacebookevents',
+		'name'   => 'import_facebook_events',
 		'desc'   => 'Displays facebook events as HTML',
-		'url'    => 'https://www.dokuwiki.org/plugin:importfacebookevents',
+		'url'    => 'https://www.dokuwiki.org/plugin:import_facebook_events',
 	 );
 	}
 
@@ -77,7 +77,7 @@ class syntax_plugin_facebookevents extends DokuWiki_Syntax_Plugin
 	}
 
 	function connectTo($mode) {
-		$this->Lexer->addSpecialPattern('\{\{facebookevents.*?\}\}',$mode,'plugin_facebookevents');
+		$this->Lexer->addSpecialPattern('\{\{facebookevents.*?\}\}',$mode,'plugin_importfacebookevents');
 	}
 
 	function getData($url) {
