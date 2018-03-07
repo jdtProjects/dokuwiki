@@ -1,7 +1,7 @@
-base   import_facebook_events
+base   importfacebookevents
 author Grégoire Surrel, Jannes Drost-Tenfelde
 email  
 date   2018-03-07
-name   import_facebook_events Plugin
+name   Import Facebook events Plugin
 desc   Allows you to display facebook events in Dokuwiki
-url    https://www.dokuwiki.org/plugin:import_facebook_events
+url    https://www.dokuwiki.org/plugin:importfacebookevents
