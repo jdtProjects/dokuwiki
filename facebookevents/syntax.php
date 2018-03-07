@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Plugin import_facebook_events: Displays facebook events.
+ * Plugin importfacebookevents: Displays facebook events.
  *
  * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
  * @version    3.0
