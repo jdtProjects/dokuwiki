@@ -4,7 +4,7 @@
  * Plugin importfacebookevents: Displays facebook events.
  *
  * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
- * @version    3.1
+ * @version    3.2
  * @date       March 2018
  * @author     G. Surrel <gregoire.surrel.org>, J. Drost-Tenfelde <info@drost-tenfelde.de>
  *
@@ -60,7 +60,7 @@ class syntax_plugin_importfacebookevents extends DokuWiki_Syntax_Plugin
 	  return array(
 		'author' => 'G. Surrel, J. Drost-Tenfelde',
 		'email'  => '',
-		'date'   => '2018-03-08',
+		'date'   => '2018-03-09',
 		'name'   => 'import_facebook_events',
 		'desc'   => 'Displays facebook events as HTML',
 		'url'    => 'https://www.dokuwiki.org/plugin:import_facebook_events',
@@ -207,6 +207,7 @@ class syntax_plugin_importfacebookevents extends DokuWiki_Syntax_Plugin
                 if(isset($event['event_times'])) {
                     dbglog("Subevent found");
                     foreach($event['event_times'] as $event_time) {
+                        if(strtotime($event_time) < strtotime($data[FB_EVENTS_FROM_DATE])) continue;
                         $json_link = "https://graph.facebook.com/v2.12/".$event_time['id']."/?fields={$fb_fields}&access_token={$fb_access_token}";
                         array_push($events, json_decode($this->getData($json_link), true));
                     }
@@ -229,8 +230,6 @@ class syntax_plugin_importfacebookevents extends DokuWiki_Syntax_Plugin
 
 				$start_date = date($date_format, strtotime($event['start_time']));
 				$start_time = date($time_format, strtotime($event['start_time']));
-
-                if(strtotime($event['start_time']) < strtotime($data[FB_EVENTS_FROM_DATE])) continue;
                 
 				if (!isset($event['end_time'])) {
 					$event['end_time'] = $event['start_time'];
