@@ -72,6 +72,10 @@ class syntax_plugin_importfacebookevents extends DokuWiki_Syntax_Plugin
 		return 'substition';
 	}
 
+	function getSort() {
+		return 42;
+	} 
+
 	function connectTo($mode) {
 		$this->Lexer->addSpecialPattern('\{\{facebookevents.*?\}\}',$mode,'plugin_importfacebookevents');
 	}
@@ -230,6 +234,8 @@ class syntax_plugin_importfacebookevents extends DokuWiki_Syntax_Plugin
 
 				$start_date = date($date_format, strtotime($event['start_time']));
 				$start_time = date($time_format, strtotime($event['start_time']));
+                
+                if(strtotime($event['start_time']) < strtotime($data[FB_EVENTS_FROM_DATE])) continue;
                 
 				if (!isset($event['end_time'])) {
 					$event['end_time'] = $event['start_time'];
