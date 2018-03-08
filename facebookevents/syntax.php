@@ -209,9 +209,8 @@ class syntax_plugin_importfacebookevents extends DokuWiki_Syntax_Plugin
             // Handle recurring events
             foreach($events as $i => $event){
                 if(isset($event['event_times'])) {
-                    dbglog("Subevent found");
                     foreach($event['event_times'] as $event_time) {
-                        if(strtotime($event_time) < strtotime($data[FB_EVENTS_FROM_DATE])) continue;
+                        if(strtotime($event_time['start_time']) < strtotime($data[FB_EVENTS_FROM_DATE])) continue;
                         $json_link = "https://graph.facebook.com/v2.12/".$event_time['id']."/?fields={$fb_fields}&access_token={$fb_access_token}";
                         array_push($events, json_decode($this->getData($json_link), true));
                     }
