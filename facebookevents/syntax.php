@@ -159,7 +159,9 @@ class syntax_plugin_importfacebookevents extends DokuWiki_Syntax_Plugin
 
 		$content = '';
 
-		if ($mode == 'xhtml') {
+        dbglog(date(DATE_ATOM));
+
+        if ($mode == 'xhtml') {
 			// Catch errors
 			if ($this->error) {
 				$renderer->doc .= 'Error in Plugin '.$info['name'].': '.$this->error;
@@ -179,11 +181,16 @@ class syntax_plugin_importfacebookevents extends DokuWiki_Syntax_Plugin
 			$token_url ="https://graph.facebook.com/oauth/access_token?client_id={$fb_app_id}&client_secret={$fb_secret}&grant_type=client_credentials";
 			$token_data = $this->getData($token_url);
 
+            dbglog($token_url);
+            
 			$elements = explode('"',$token_data);
 			if (count($elements) < 9) {
 				$renderer->doc .= 'Access token could not be retrieved for Plugin '.$info['name'].': '.$this->error.' | '.$token_data;
 				return;
 			}
+
+            dbglog($elements);
+            
 			$fb_access_token = $elements[3];
 
 			// Get the events
@@ -196,7 +203,6 @@ class syntax_plugin_importfacebookevents extends DokuWiki_Syntax_Plugin
 			$json_link = "https://graph.facebook.com/v2.12/{$fb_page_id}/events/?fields={$fb_fields}&access_token={$fb_access_token}&limit={$limit}&since={$since_date}&until={$until_date}";
 			$json = $this->getData($json_link);
 			
-			dbglog(date(DATE_ATOM));
 			dbglog($json_link);
 
 			//$objects = json_decode($json, true, 512, JSON_BIGINT_AS_STRING);
