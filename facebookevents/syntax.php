@@ -4,7 +4,7 @@
  * Plugin importfacebookevents: Displays facebook events.
  *
  * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
- * @version    3.2
+ * @version    3.3
  * @date       March 2018
  * @author     G. Surrel <gregoire.surrel.org>, J. Drost-Tenfelde <info@drost-tenfelde.de>
  *
@@ -181,31 +181,21 @@ class syntax_plugin_importfacebookevents extends DokuWiki_Syntax_Plugin
 			$token_url ="https://graph.facebook.com/oauth/access_token?client_id={$fb_app_id}&client_secret={$fb_secret}&grant_type=client_credentials";
 			$token_data = $this->getData($token_url);
 
-            dbglog($token_url);
+			$objects = json_decode($token_data, true);
+			dbglog([$token_url, $objects]);
+			$fb_access_token = $objects['access_token'];
             
-			$elements = explode('"',$token_data);
-			if (count($elements) < 9) {
-				$renderer->doc .= 'Access token could not be retrieved for Plugin '.$info['name'].': '.$this->error.' | '.$token_data;
-				return;
-			}
-
-            dbglog($elements);
-            
-			$fb_access_token = $elements[3];
-
-			// Get the events
-			$since_date = strtotime("-2 month", $data[FB_EVENTS_FROM_DATE]); // Go back in time as recurrent events disappear
+            // Get the events
+			$since_date = strtotime('-2 months', strtotime($data[FB_EVENTS_FROM_DATE])); // Go back in time as recurrent events disappear
 			$until_date = strtotime($data[FB_EVENTS_TO_DATE]);
 			$limit = $data[FB_EVENTS_NR_ENTRIES];
 
 			$fb_fields="id,name,place,updated_time,timezone,start_time,end_time,event_times,cover,photos{picture},picture{url},description,feed.limit(10){from{name,picture},created_time,type,message,link,permalink_url,source,picture}";
-
+            
 			$json_link = "https://graph.facebook.com/v2.12/{$fb_page_id}/events/?fields={$fb_fields}&access_token={$fb_access_token}&limit={$limit}&since={$since_date}&until={$until_date}";
 			$json = $this->getData($json_link);
-			
 			dbglog($json_link);
 
-			//$objects = json_decode($json, true, 512, JSON_BIGINT_AS_STRING);
 			$objects = json_decode($json, true);
 			$events = $objects['data'];
 
@@ -217,8 +207,14 @@ class syntax_plugin_importfacebookevents extends DokuWiki_Syntax_Plugin
                 if(isset($event['event_times'])) {
                     foreach($event['event_times'] as $event_time) {
                         if(strtotime($event_time['start_time']) < strtotime($data[FB_EVENTS_FROM_DATE])) continue;
-                        $json_link = "https://graph.facebook.com/v2.12/".$event_time['id']."/?fields={$fb_fields}&access_token={$fb_access_token}";
-                        array_push($events, json_decode($this->getData($json_link), true));
+                        //$json_link = "https://graph.facebook.com/v2.12/".$event_time['id']."/?fields={$fb_fields}&access_token={$fb_access_token}";
+                        //$evt_details = json_decode($this->getData($json_link), true);
+                        //dbglog([$event, $json_link, $evt_details]);
+                        $evt_details = $event;
+                        unset($evt_details['event_times']);
+                        $evt_details['start_time'] = $event_time['start_time'];
+                        $evt_details['end_time'] = $event_time['end_time'];
+                        array_push($events, $evt_details);
                     }
                     unset($events[$i]);
                 }
