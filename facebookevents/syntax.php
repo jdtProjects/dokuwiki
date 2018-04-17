@@ -178,24 +178,34 @@ class syntax_plugin_importfacebookevents extends DokuWiki_Syntax_Plugin
 			$fb_page_id = $data[FB_EVENTS_FAN_PAGE_ID];
 
 			// Get the access token using app-id and secret
-			$token_url ="https://graph.facebook.com/oauth/access_token?client_id={$fb_app_id}&client_secret={$fb_secret}&grant_type=client_credentials";
-			$token_data = $this->getData($token_url);
-
-			$objects = json_decode($token_data, true);
-			dbglog([$token_url, $objects]);
-			$fb_access_token = $objects['access_token'];
-            
-            // Get the events
-			$since_date = strtotime('-2 months', strtotime($data[FB_EVENTS_FROM_DATE])); // Go back in time as recurrent events disappear
-			$until_date = strtotime($data[FB_EVENTS_TO_DATE]);
-			$limit = $data[FB_EVENTS_NR_ENTRIES];
-
-			$fb_fields="id,name,place,updated_time,timezone,start_time,end_time,event_times,cover,photos{picture},picture{url},description,feed.limit(10){from{name,picture},created_time,type,message,link,permalink_url,source,picture}";
-            
-			$json_link = "https://graph.facebook.com/v2.12/{$fb_page_id}/events/?fields={$fb_fields}&access_token={$fb_access_token}&limit={$limit}&since={$since_date}&until={$until_date}";
-			$json = $this->getData($json_link);
-			dbglog($json_link);
-
+			$token_url ="https://graph.facebook.com/oauth/access_token?client_id={$fb_app_id}&client_secret={$fb_secret}&grant_type=client_credentials";		
+					
+			$token_data = file_get_contents($token_url);
+			if ( !isset($token_data ) ) {
+				$renderer->doc .= 'Access token could not be retrieved for Plugin '.$info['name'].': '.$this->error;
+                return;
+			}
+			else {
+				// Attempt to decode json
+				try {
+					$obj = json_decode($token_data);
+					$fb_access_token = $obj->{'access_token'};
+				}
+				catch ( Exception $exception ) {
+					$fb_access_token = split("=", $token_data )[1];
+				}
+			}
+			
+			// Get the events
+			$since_date = $data[FB_EVENTS_FROM_DATE];
+			$until_date = $data[FB_EVENTS_TO_DATE];
+			
+			$fb_fields="id,name,description,place,timezone,start_time,end_time,cover";
+			
+			$json_link = "https://graph.facebook.com/v2.7/{$fb_page_id}/events/attending/?fields={$fb_fields}&access_token={$fb_access_token}&since={$since_date}&until={$until_date}";
+			$json = $this->getData( $json_link);			
+			
+			//$objects = json_decode($json, true, 512, JSON_BIGINT_AS_STRING);
 			$objects = json_decode($json, true);
 			$events = $objects['data'];
 
