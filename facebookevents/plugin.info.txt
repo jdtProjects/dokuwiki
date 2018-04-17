@@ -1,7 +1,7 @@
-base   facebookevents
-author Jannes Drost-Tenfelde
-email  info@drost-tenfelde.de
-date   2016-09-29
-name   facebookevents Plugin
+base   importfacebookevents
+author Grégoire Surrel, Jannes Drost-Tenfelde
+email  
+date   2018-03-09
+name   Import Facebook events Plugin
 desc   Allows you to display facebook events in Dokuwiki
-url    https://www.dokuwiki.org/plugin:facebookevents
+url    https://www.dokuwiki.org/plugin:importfacebookevents

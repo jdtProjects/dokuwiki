@@ -1,6 +1,6 @@
 <?php
 
-# Default configuration for iCalendar Dokuwiki Plugin
+# Default configuration for importfacebookevents Dokuwiki Plugin
 
 # Date format that is used to display the from and to values
 # If you leave this empty '', then the default dformat from /conf/dokuwiki.php will be used.
@@ -13,15 +13,12 @@ $conf['default'] = '
 {description}\\\\
 {location}\\\\
 {more}';
-
 $conf['table'] = $conf['default'];
 $conf['short'] = $conf['default'];
 
-/*'
-^ [[{image_large}|{{  {image}?100&nolink}}]] | {title}  | ** {datetime} **  | {location}  | {description} \\\\ {more}  |';
+$conf['wallposts_default'] = '> {{{wp_userImage}?nolink |}} **{wp_userName}** \\ //[[{wp_permalink}|{wp_datetime}]]//
+> [[{wp_mediaSource}|{{ {wp_mediaImage}?nolink|}}]]
+{wp_content}
 
-$conf['short'] = '
-^ [[{image_large}|{{  {image}?100&nolink}}]] | {title}  | ** {datetime} **  | {location}  | {description} \\\\ {more}  |';
-*/
-
-?>
+';
+$conf['wallposts_alternate'] = '';
